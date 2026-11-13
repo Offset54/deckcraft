@@ -25,6 +25,14 @@ pub fn about(_app: &mut SlideApp, ui: &mut Ui) {
         ui.add_space(6.0);
         ui.label("Presentations and slide shows, rebuilt from scratch in pure Rust.");
         ui.label("An open-source, clean-room project. Not affiliated with Microsoft.");
+        // A custom build is a published modified version: it must not present itself as an
+        // ArtCraft product (docs/brand/LICENSE-brand.txt, "Forks and modified versions").
+        if option_env!("CRAFT_CUSTOM_BUILD").is_some_and(|v| !v.is_empty()) {
+            ui.label(
+                egui::RichText::new("Unofficial build with custom patches, based on DeckCraft by the ArtCraft team. Not made or supported by the ArtCraft team.")
+                    .color(t.text_dim),
+            );
+        }
         ui.add_space(6.0);
         ui.hyperlink_to("Join our community on Discord", deckcraft_engine::links::DISCORD);
         ui.hyperlink_to("getartcraft.com/apps/deckcraft", deckcraft_engine::links::APP_PAGE);
