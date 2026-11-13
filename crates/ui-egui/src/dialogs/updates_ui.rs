@@ -17,12 +17,33 @@ pub(crate) struct Runtime {
 
 impl Default for Runtime {
     fn default() -> Self {
-        Self { updater: Updater::new(&crate::UPDATE_APP, VERSION), enabled: false, check_requested: false }
+        Self {
+            updater: custom_build_updater(Updater::new(&crate::UPDATE_APP, VERSION), option_env!("CRAFT_CUSTOM_BUILD")),
+            enabled: false,
+            check_requested: false,
+        }
     }
 }
 
+/// A custom build (built with `CRAFT_CUSTOM_BUILD` set to its label) never installs an official
+/// release from its own update check, which would drop the custom patches: it reads a
+/// version-choice file of its own that keeps this app on the launcher's track, so Help > Check
+/// for Updates says updates come from the launcher. An official build (`None`) is unchanged.
+pub(crate) fn custom_build_updater(updater: Updater, custom_build: Option<&str>) -> Updater {
+    let Some(label) = custom_build else { return updater };
+    let id = crate::UPDATE_APP.id;
+    let path = std::env::temp_dir().join(format!("craft-custom-build-{id}-versions.json"));
+    let body = serde_json::json!({ "apps": { id: { "Pinned": label } } }).to_string();
+    if let Err(e) = std::fs::write(&path, body) {
+        log::warn!("couldn't write {} ({e}); the update check stays off", path.display());
+    }
+    // A missing or damaged file would read as "follow stable releases", so a custom build never
+    // turns the check at start on either (`enable`).
+    updater.with_pins_path(path)
+}
+
 pub(crate) fn enable(app: &mut SlideApp) {
-    app.updates_rt.enabled = true;
+    app.updates_rt.enabled = option_env!("CRAFT_CUSTOM_BUILD").is_none();
 }
 
 /// Help > Check for Updates…: runs a check and reports the outcome either way.
@@ -80,6 +101,19 @@ fn answer(rt: &mut Runtime, response: CheckResultResponse) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_custom_build_leaves_updates_to_its_launcher() {
+        use craft_update::pins::{Choice, Pins, VersionTrack};
+        let id = crate::UPDATE_APP.id;
+        let path = std::env::temp_dir().join(format!("craft-custom-build-{id}-versions.json"));
+        let _ = std::fs::remove_file(&path);
+        let official = custom_build_updater(Updater::new(&crate::UPDATE_APP, VERSION), None);
+        assert!(official.managed().is_none());
+        assert!(!path.exists(), "an official build writes no version choice");
+        let _ = custom_build_updater(Updater::new(&crate::UPDATE_APP, VERSION), Some("0.18.1-custom"));
+        assert_eq!(Pins::load(&path).choice(id), Choice::Managed(VersionTrack::Pinned("0.18.1-custom".into())));
+    }
 
     #[test]
     fn an_offered_release_opens_the_prompt() {
