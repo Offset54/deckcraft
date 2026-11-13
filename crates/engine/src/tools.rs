@@ -12,11 +12,13 @@ use crate::cmd::{self, xfrm_of};
 use crate::{HistoryEntry, Result, Session, TextSel};
 
 mod click;
+mod crop;
 mod drag;
 mod geometry;
 mod hit;
 mod pointer;
 
+pub use crop::{CROP_PAN, crop_drag, crop_picture_corners};
 pub(crate) use drag::MAX_GESTURE_POINTS;
 pub use hit::{line_xfrm, resize_box, table_rows, text_pos};
 
@@ -83,6 +85,11 @@ pub enum ToolKind {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "kind")]
 pub enum Hit {
+    /// A crop frame handle, or CROP_PAN for moving the picture inside it.
+    Crop {
+        id: ShapeId,
+        handle: u8,
+    },
     /// Resize handle 0..8: NW, N, NE, E, SE, S, SW, W.
     Resize {
         id: ShapeId,
@@ -141,6 +148,13 @@ pub enum Hit {
 
 #[derive(Clone, Debug)]
 enum Drag {
+    Crop {
+        id: ShapeId,
+        handle: u8,
+        orig: Xfrm,
+        crop: [f64; 4],
+        start: Point,
+    },
     Move {
         ids: Vec<ShapeId>,
         start: Point,
@@ -276,6 +290,8 @@ pub struct ToolState {
     pub path_preview: Vec<Point>,
     pub path_smooth: bool,
     pub path_closing: bool,
+    /// The selected picture whose crop handles are visible.
+    pub crop: Option<ShapeId>,
     /// Whether the last freeform press added a vertex (it adds none at the point cap).
     pub press_added_vertex: bool,
     /// The shape in Edit Points: its vertices are handles instead of the box's.
