@@ -267,6 +267,8 @@ struct FontEdits {
     baseline: Option<f64>,
     caps: Option<Caps>,
     spacing: Option<f64>,
+    /// Kerning for fonts: the smallest size (points) whose pairs are kerned; 0 turns it off.
+    kern: Option<f64>,
 }
 
 impl FontEdits {
@@ -281,6 +283,7 @@ impl FontEdits {
             && self.baseline.is_none()
             && self.caps.is_none()
             && self.spacing.is_none()
+            && self.kern.is_none()
     }
 
     fn write(&self, r: &mut RunProps) {
@@ -313,6 +316,9 @@ impl FontEdits {
         }
         if let Some(v) = self.spacing {
             r.spacing = Some(v);
+        }
+        if let Some(v) = self.kern {
+            r.kern = Some(v);
         }
     }
 }
@@ -397,7 +403,20 @@ fn font_edits(p: &Value) -> Result<FontEdits> {
             Some(n.clamp(-100.0, 400.0))
         }
     };
-    Ok(FontEdits { family, size, bold: font_bool(p, "bold")?, italic: font_bool(p, "italic")?, underline, color, strike, baseline, caps, spacing })
+    let kern = super::kerning::kern_param(p)?;
+    Ok(FontEdits {
+        family,
+        size,
+        bold: font_bool(p, "bold")?,
+        italic: font_bool(p, "italic")?,
+        underline,
+        color,
+        strike,
+        baseline,
+        caps,
+        spacing,
+        kern,
+    })
 }
 
 /// A colour as a `format.fontDialog` / `format.color` parameter, including transforms.
@@ -447,6 +466,7 @@ fn font_dialog_params(s: &Session) -> Value {
             _ => "none",
         },
         "spacing": r.spacing.unwrap_or(0.0),
+        "kern": r.kern.unwrap_or(0.0),
     });
     if let Some(Fill::Solid { color }) = &r.fill {
         v["color"] = color_command_value(color);

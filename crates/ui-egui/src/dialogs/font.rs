@@ -10,9 +10,20 @@ fn seed_font_fields(d: &mut Dialog) {
     seed_once(d, "baseline", json_text(d.params.get("baseline"), "none"));
     seed_once(d, "caps", json_text(d.params.get("caps"), "none"));
     seed_once(d, "spacing", json_text(d.params.get("spacing"), "0"));
+    // Kerning for fonts: on with a size, or off (a threshold of 0).
+    let kern = d.params.get("kern").and_then(serde_json::Value::as_f64).filter(|k| k.is_finite()).unwrap_or(0.0);
+    seed_once(d, "kernOn", if kern > 0.0 { "1".into() } else { "0".into() });
+    seed_once(d, "kern", crate::widgets::fmt_num(if kern > 0.0 { kern } else { 12.0 }, ""));
+    let seed = kern_state(d);
+    seed_once(d, "kernSeed", seed);
     let shown = d.params.get("color").map(color_label).unwrap_or_default();
     seed_once(d, "color", shown.clone());
     seed_once(d, "colorSeed", shown);
+}
+
+/// The kerning fields as one value, to tell whether they were changed while the dialog was open.
+fn kern_state(d: &mut Dialog) -> String {
+    format!("{}|{}", d.get("kernOn", "0"), d.get("kern", "12"))
 }
 
 /// Home › Font › Font…, the shape menu and Cmd+T. One OK applies every field together.
@@ -100,6 +111,15 @@ pub(super) fn font_dialog(app: &mut SlideApp, ui: &mut Ui, d: &mut Dialog) -> bo
             d.fields.insert("spacing".into(), spacing);
         }
     });
+    ui.horizontal(|ui| {
+        ui.add_sized(vec2(88.0, 20.0), egui::Label::new(""));
+        let on = check(ui, d, "Kerning for fonts", "kernOn", false);
+        let mut kern = d.get("kern", "12");
+        ui.add_enabled(on, egui::TextEdit::singleline(&mut kern).desired_width(48.0))
+            .widget_info(|| egui::WidgetInfo::labeled(egui::Role::TextInput, on, "Kerning for fonts of this size and above"));
+        d.fields.insert("kern".into(), kern);
+        ui.label("points and above");
+    });
     let bold = d.get("bold", "0") == "1";
     let italic = d.get("italic", "0") == "1";
     let underline = d.get("underline", "none");
@@ -136,6 +156,15 @@ pub(super) fn font_dialog(app: &mut SlideApp, ui: &mut Ui, d: &mut Dialog) -> bo
             app.set_status("Character spacing must be a number");
             return false;
         };
+        let kern_on = d.get("kernOn", "0") == "1";
+        let kern = match finite_pt(&d.get("kern", "12")) {
+            Some(k) if k > 0.0 => k,
+            _ if !kern_on => 12.0,
+            _ => {
+                app.set_status("Kerning size must be a number above 0");
+                return false;
+            }
+        };
         let mut params = json!({
             "family": family,
             "size": size,
@@ -147,6 +176,10 @@ pub(super) fn font_dialog(app: &mut SlideApp, ui: &mut Ui, d: &mut Dialog) -> bo
             "caps": d.get("caps", "none"),
             "spacing": spacing,
         });
+        // Kerning is sent only when it was changed here, so OK on mixed text leaves it alone.
+        if kern_state(d) != d.get("kernSeed", "") {
+            params["kern"] = json!(if kern_on { kern } else { 0.0 });
+        }
         let color = d.get("color", "");
         let seed = d.get("colorSeed", "");
         if color == seed {

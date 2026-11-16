@@ -7,6 +7,7 @@ use egui_kittest::Harness;
 use crate::{Services, SlideApp};
 use deckcraft_engine::Session;
 
+mod kerning;
 mod number_from;
 
 /// The whole app in a test window.

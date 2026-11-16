@@ -17,6 +17,7 @@ use crate::{Result, Session};
 use deckcraft_model::ShapeId;
 
 mod font;
+mod kerning;
 mod painter;
 mod paragraph;
 mod ruler;
@@ -120,7 +121,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "Font…",
             ["Home", "Font"],
             Some("Cmd+T"),
-            "{family?, size?: pt, bold?: bool, italic?: bool, underline?: none|sng|dbl|heavy|dotted|dash|wavy, color?, strike?: none|sng|dbl, baseline?: none|super|sub|<fraction>, caps?: none|small|all, spacing?: pt} — with none of these, opens the Font dialog",
+            "{family?, size?: pt, bold?: bool, italic?: bool, underline?: none|sng|dbl|heavy|dotted|dash|wavy, color?, strike?: none|sng|dbl, baseline?: none|super|sub|<fraction>, caps?: none|small|all, spacing?: pt, kern?: pt (kerning for fonts this size and above; 0 = off)} — with none of these, opens the Font dialog",
             has_text_or_shapes,
             font_dialog
         ),
