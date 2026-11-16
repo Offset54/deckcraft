@@ -465,6 +465,8 @@ mod ime_tests;
 #[cfg(test)]
 mod last_color_tests;
 #[cfg(test)]
+mod patch_tests;
+#[cfg(test)]
 mod presenter_tests;
 #[cfg(test)]
 mod reflection_pane_tests;

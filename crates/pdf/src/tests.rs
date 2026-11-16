@@ -387,6 +387,27 @@ fn slide_number_field_is_recovered_from_the_page_text_layer() {
     }
 }
 
+/// Slide Size › Number slides from moves the number every slide-number field shows, in the text
+/// layer as on the slide.
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn slide_number_field_counts_from_the_first_slide_number() {
+    use deckcraft_model::text::{Run, RunKind};
+    let mut field = Run::new("<#>");
+    field.kind = RunKind::Field { field: "slidenum".into() };
+    let mut p = deck_with_body(3, ubuntu_runs(vec![Run::new("Page "), field]));
+    p.first_slide_number = 0;
+    let bytes = export(&p, &opts(PageLayout::Slides)).unwrap();
+    for (i, want) in ["Page 0", "Page 1", "Page 2"].into_iter().enumerate() {
+        assert_eq!(page_text(&bytes, i), want);
+    }
+    p.first_slide_number = 41;
+    let bytes = export(&p, &opts(PageLayout::Slides)).unwrap();
+    for (i, want) in ["Page 41", "Page 42", "Page 43"].into_iter().enumerate() {
+        assert_eq!(page_text(&bytes, i), want);
+    }
+}
+
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 #[cfg_attr(not(target_arch = "wasm32"), test)]
 fn line_break_keeps_the_text_layer_aligned_with_the_layout() {

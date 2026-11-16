@@ -27,3 +27,23 @@ pub(super) fn unit_abbr(unit: deckcraft_geom::Unit) -> &'static str {
         deckcraft_geom::Unit::Pixels => "px",
     }
 }
+
+/// "Number slides from" as typed: a whole number 0–9999 (what a .pptx can hold), else `None`.
+pub(super) fn first_slide_number_typed(text: &str) -> Option<u32> {
+    text.trim().parse::<u32>().ok().filter(|n| *n <= 9999)
+}
+
+#[cfg(test)]
+mod patch_tests {
+    use super::first_slide_number_typed;
+
+    #[test]
+    fn number_slides_from_takes_whole_numbers_up_to_9999() {
+        assert_eq!(first_slide_number_typed("0"), Some(0));
+        assert_eq!(first_slide_number_typed(" 12 "), Some(12));
+        assert_eq!(first_slide_number_typed("9999"), Some(9999));
+        for bad in ["", "-1", "10000", "1.5", "one", "1e3", "99999999999999999999"] {
+            assert_eq!(first_slide_number_typed(bad), None, "{bad}");
+        }
+    }
+}

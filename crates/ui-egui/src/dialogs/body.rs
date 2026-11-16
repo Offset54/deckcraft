@@ -13,7 +13,7 @@ use super::paragraph::paragraph_dialog;
 use super::photo_album::photo_album_dialog;
 use super::preferences::{preferences_snapshot, restore_preferences};
 use super::size_position::size_position_dialog;
-use super::slide_size::{put_slide_dim, slide_dim_points, unit_abbr};
+use super::slide_size::{first_slide_number_typed, put_slide_dim, slide_dim_points, unit_abbr};
 use super::tabs::tabs_dialog;
 use super::theme_colors::theme_colors_dialog;
 use super::theme_fonts::theme_fonts_dialog;
@@ -126,11 +126,23 @@ fn dlg_slide_size(app: &mut SlideApp, ui: &mut Ui, d: &mut Dialog) -> bool {
             put_slide_dim(d, "h", w, ppu);
         }
     });
+    let first_now = app.session.active().map_or(1, |s| s.doc.first_slide_number);
+    field(ui, d, "Number slides from:", "first", &first_now.to_string());
     let maximize = check(ui, d, "Maximize content (else ensure fit)", "max", false);
     let (ok, cancel) = buttons(ui, "OK");
     if ok {
+        // A whole number 0–9999, or the dialog stays open and says so.
+        let Some(first) = first_slide_number_typed(&field_of(d, "first")) else {
+            app.set_status("Number slides from: a whole number from 0 to 9999");
+            return false;
+        };
         let (w, h) = (slide_dim_points(d, "w", ppu, cur.width), slide_dim_points(d, "h", ppu, cur.height));
-        run(app, "design.slideSize", json!({"w": w, "h": h, "scale": if maximize { "maximize" } else { "ensureFit" }}));
+        let mut params = json!({"w": w, "h": h, "scale": if maximize { "maximize" } else { "ensureFit" }});
+        // Sent only when it changes, so an untouched field adds nothing to the command.
+        if first != first_now {
+            params["firstNumber"] = json!(first);
+        }
+        run(app, "design.slideSize", params);
     }
     ok || cancel
 }

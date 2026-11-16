@@ -22,6 +22,12 @@ pub(super) fn scale_shapes(shapes: &mut [Shape], sx: f64, sy: f64, k: f64, ox: f
 }
 
 pub(super) fn slide_size(s: &mut Session, p: &Value) -> Result<Value> {
+    let first = super::first_number::first_number_param(p)?;
+    if let Some(first) = first
+        && super::first_number::only_first_number(p)
+    {
+        return super::first_number::set_first_number(s, first);
+    }
     let size = if let Some(pre) = str_param(p, "preset") {
         let k = pre.to_ascii_lowercase();
         let found = defaults::SLIDE_SIZES.iter().find(|(l, _, _)| l.to_ascii_lowercase().starts_with(&k) || l.to_ascii_lowercase().contains(&k));
@@ -67,9 +73,12 @@ pub(super) fn slide_size(s: &mut Session, p: &Value) -> Result<Value> {
             scale_shapes(&mut Arc::make_mut(sl).shapes, sx, sy, k, ox, oy);
         }
         doc.slide_size = size;
+        if let Some(first) = first {
+            doc.first_slide_number = first;
+        }
         Ok(())
     })?;
-    Ok(json!({"w": size.width, "h": size.height}))
+    Ok(json!({"w": size.width, "h": size.height, "firstNumber": s.doc()?.doc.first_slide_number}))
 }
 
 pub(super) fn header_footer(s: &mut Session, p: &Value) -> Result<Value> {

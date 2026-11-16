@@ -17,6 +17,7 @@ use super::{
 use crate::{Result, Session, Target};
 
 mod colors;
+mod first_number;
 mod master_view;
 mod slide_background;
 mod slide_setup;
@@ -72,7 +73,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "Slide Size",
             ["Design", "Customize"],
             None,
-            "{preset: widescreen|standard|…, orientation?: portrait|landscape, scale?: maximize|ensureFit|none} | {w: pt, h: pt, orientation?: portrait|landscape, scale?: maximize|ensureFit|none}",
+            "{preset: widescreen|standard|…, orientation?: portrait|landscape, scale?: maximize|ensureFit|none, firstNumber?: 0..9999} | {w: pt, h: pt, orientation?: portrait|landscape, scale?: maximize|ensureFit|none, firstNumber?: 0..9999} | {firstNumber: 0..9999} — firstNumber is Number slides from: the number the first slide shows",
             has_doc,
             slide_size
         ),
