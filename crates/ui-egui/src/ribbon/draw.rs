@@ -42,4 +42,14 @@ pub(super) fn draw(app: &mut SlideApp, ui: &mut Ui) {
         let r = big_button(ui, Icon::InkToMath, "Ink to\nMath", false);
         let _ = r.on_hover_text("Ink to Math (coming soon)");
     });
+    group(ui, |ui| {
+        // Ink Replay: draw the slide's ink again in the order it was drawn. Click again to stop.
+        let playing = app.ink_replay.is_some();
+        let can = playing || crate::ink_replay::available(app);
+        let (r, _) = big_button_ex(ui, Icon::Preview, "Ink\nReplay", can, false, playing);
+        if r.on_hover_text("Ink Replay: watch the ink on this slide being drawn again").clicked() {
+            app.session.set_tool(ToolKind::Select);
+            run(app, "draw.inkReplay", json!({}));
+        }
+    });
 }

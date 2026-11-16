@@ -184,6 +184,7 @@ impl SlideApp {
                 self.show = None;
                 self.media.stop_owned(media::Owner::Show);
             }
+            "draw.inkReplay" => return crate::ink_replay::command(self, p),
             "animation.preview" => {
                 if p.get("on").and_then(Value::as_bool) == Some(false) {
                     self.anim_preview = None;

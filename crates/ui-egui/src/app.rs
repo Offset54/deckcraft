@@ -53,6 +53,7 @@ impl SlideApp {
             thesaurus_query: String::new(),
             show: None,
             anim_preview: None,
+            ink_replay: None,
             reuse_target: None,
             media: media::MediaHost::new(audio_out),
             status: None,
@@ -324,6 +325,9 @@ impl SlideApp {
         }
         let now = ui.input(|i| i.time);
         if self.tick_anim_preview(now) {
+            ctx.request_repaint();
+        }
+        if crate::ink_replay::tick(self, now) {
             ctx.request_repaint();
         }
         egui::CentralPanel::default().frame(egui::Frame::NONE.fill(t.chrome)).show(ui, |ui| {

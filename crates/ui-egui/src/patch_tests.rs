@@ -8,6 +8,7 @@ use crate::{Services, SlideApp};
 use deckcraft_engine::Session;
 
 mod crop_fit;
+mod ink_replay;
 mod kerning;
 mod number_from;
 mod reading_order;

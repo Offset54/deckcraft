@@ -261,9 +261,14 @@ pub fn show(app: &mut SlideApp, ui: &mut Ui) {
     let tex = match st.map(|d| (d.selection.target, d)) {
         Some((Target::Slides, d)) => {
             let idx = d.selection.slide;
-            let doc = d.doc.clone();
+            // Ink Replay draws its own copy of the slide, a different one each frame.
+            let (doc, replay_key) = match crate::ink_replay::frame_doc(app.ink_replay.as_ref(), &d.doc, idx) {
+                Some((doc, key)) => (doc, key),
+                None => (d.doc.clone(), 0),
+            };
             let frame = anim.as_ref().map(|(tl, t)| (tl, *t));
-            app.textures.slide(ui.ctx(), &doc, idx, px, visible, true, crate::media::gif_key(&gifs), app.ui.grayscale, &times, typing_into, frame)
+            let extra = crate::media::gif_key(&gifs) ^ replay_key;
+            app.textures.slide(ui.ctx(), &doc, idx, px, visible, true, extra, app.ui.grayscale, &times, typing_into, frame)
         }
         Some((Target::Master { master }, d)) => master_tex(ui.ctx(), &d.doc, master, None, px, visible, typing_into),
         Some((Target::Layout { master, layout }, d)) => master_tex(ui.ctx(), &d.doc, master, Some(layout), px, visible, typing_into),

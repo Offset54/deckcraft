@@ -23,6 +23,7 @@ pub mod dialogs;
 pub mod doc_window;
 pub mod eyedropper;
 pub mod icons;
+pub mod ink_replay;
 pub mod media;
 pub mod menus;
 pub mod opening;
@@ -130,6 +131,7 @@ pub const UI_COMMANDS: &[(&str, &str, Option<&str>, &str)] = &[
     ("show.keepCursor", "Keep Mouse Cursor Visible", None, "{on?: bool}"),
     ("show.end", "End Show", None, "{}"),
     ("animation.preview", "Preview Animations", None, "{on?: bool, from?: effect index}"),
+    ("draw.inkReplay", "Ink Replay", None, "{on?: bool, pause?: bool, rewind?: bool}"),
     ("app.home", "Home", None, "{on?}"),
     ("app.backstage", "File", Some("Alt+F"), "{page?: home|new|open|info|saveAs|print|export|about, on?: bool}"),
     ("app.closePresentation", "Close", Some("Cmd+W"), "{}"),
@@ -236,6 +238,8 @@ pub struct SlideApp {
     pub show: Option<show::Show>,
     /// Current slide's animations playing on the editor canvas (not the full-screen show).
     anim_preview: Option<AnimPreview>,
+    /// The current slide's ink being drawn again on the editor canvas (Draw › Ink Replay).
+    pub ink_replay: Option<ink_replay::Replay>,
     /// Where the Reuse Slides picker inserts: the presentation and slide current when it opened.
     reuse_target: Option<FileTarget>,
     /// Audio/video playback (editor control bar, slide show, `media.*` commands).

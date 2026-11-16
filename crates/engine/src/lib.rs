@@ -16,6 +16,7 @@ pub mod fonts;
 pub mod gif_export;
 pub mod guard;
 pub mod icons;
+pub mod ink_replay;
 pub mod inkshape;
 pub mod io;
 pub mod keys;
