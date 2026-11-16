@@ -185,6 +185,8 @@ pub(super) fn picture_format(app: &mut SlideApp, ui: &mut Ui) {
                 run(app, "shape.change", json!({"preset": p}));
             }
             ui.separator();
+            crate::panels::crop_section::crop_menu_items(app, ui);
+            ui.separator();
             for (l, v) in [("Crop 10% each side", 0.1), ("Crop 20% each side", 0.2), ("Reset Crop", 0.0)] {
                 if ui.button(l).clicked() {
                     run(app, "picture.crop", json!({"left": v, "top": v, "right": v, "bottom": v}));

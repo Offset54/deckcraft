@@ -36,7 +36,7 @@ fn crop_of(st: &crate::DocState, id: ShapeId) -> Option<[f64; 4]> {
 
 /// The whole picture under a frame `x` cropped by `crop`, in the frame's own coordinates:
 /// (left, top, width, height).
-fn picture_box(x: &Xfrm, crop: [f64; 4]) -> (f64, f64, f64, f64) {
+pub(crate) fn picture_box(x: &Xfrm, crop: [f64; 4]) -> (f64, f64, f64, f64) {
     let [l, t, r, b] = crop;
     let w = x.w / (1.0 - l - r).max(0.01);
     let h = x.h / (1.0 - t - b).max(0.01);
@@ -53,7 +53,7 @@ pub fn crop_picture_corners(x: &Xfrm, crop: [f64; 4]) -> [Point; 4] {
 
 /// The crop of frame `(x0, y0)..(x1, y1)` (in the original frame's coordinates) over the picture
 /// box `(px, py, w, h)`.
-fn crop_for(frame: (f64, f64, f64, f64), picture: (f64, f64, f64, f64)) -> [f64; 4] {
+pub(crate) fn crop_for(frame: (f64, f64, f64, f64), picture: (f64, f64, f64, f64)) -> [f64; 4] {
     let (x0, y0, x1, y1) = frame;
     let (px, py, w, h) = picture;
     let c = [(x0 - px) / w, (y0 - py) / h, (px + w - x1) / w, (py + h - y1) / h];

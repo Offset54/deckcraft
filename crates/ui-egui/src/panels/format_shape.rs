@@ -349,6 +349,9 @@ pub(super) fn format_shape(app: &mut SlideApp, ui: &mut Ui) {
             if ui.button("Reset Picture").clicked() {
                 run(app, "picture.reset", json!({}));
             }
+            if single && matches!(sh.kind, ShapeKind::Picture { .. }) {
+                super::crop_section::crop_section(app, ui, sh.id.0);
+            }
         }
         _ => {
             // Fill & Line.

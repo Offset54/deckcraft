@@ -12,7 +12,7 @@ use crate::cmd::{self, xfrm_of};
 use crate::{HistoryEntry, Result, Session, TextSel};
 
 mod click;
-mod crop;
+pub(crate) mod crop;
 mod drag;
 mod geometry;
 mod hit;

@@ -7,6 +7,7 @@ use egui_kittest::Harness;
 use crate::{Services, SlideApp};
 use deckcraft_engine::Session;
 
+mod crop_fit;
 mod kerning;
 mod number_from;
 mod reading_order;

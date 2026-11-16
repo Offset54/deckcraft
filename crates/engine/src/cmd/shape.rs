@@ -15,6 +15,7 @@ use super::{
 use crate::{Result, Session};
 
 mod appearance;
+pub mod crop_fit;
 mod freeform;
 mod picture;
 mod size;
@@ -164,6 +165,51 @@ pub fn specs() -> Vec<CommandSpec> {
             "{on?: bool (default: toggle)}: crop handles on the selected picture; drag them, or the picture inside the frame. Enter or Escape ends it",
             has_selection,
             crop_mode
+        ),
+        cmd!(
+            "picture.cropFill",
+            "Fill",
+            ["Picture Format", "Size"],
+            None,
+            "{ids?} → {changed, crop} — the picture covers its frame, unstretched; what overflows is cropped evenly",
+            has_selection,
+            crop_fit::crop_fill
+        ),
+        cmd!(
+            "picture.cropFit",
+            "Fit",
+            ["Picture Format", "Size"],
+            None,
+            "{ids?} → {changed, crop} — the whole picture shows inside its frame, unstretched, with empty bands",
+            has_selection,
+            crop_fit::crop_fit
+        ),
+        cmd!(
+            "picture.cropAspect",
+            "Aspect Ratio",
+            ["Picture Format", "Size"],
+            None,
+            "{ratio: \"16:9\" | number (width ÷ height, 0.01..100), ids?} → {changed, crop} — the frame becomes the largest one of that ratio inside the whole picture, centred on it",
+            has_selection,
+            crop_fit::crop_aspect
+        ),
+        cmd!(
+            "picture.cropPosition",
+            "Crop Position",
+            ["Format Picture", "Crop"],
+            None,
+            "{pictureWidth?: pt, pictureHeight?: pt, offsetX?: pt, offsetY?: pt, cropWidth?: pt, cropHeight?: pt, cropLeft?: pt, cropTop?: pt, id?} → the fields as picture.cropInfo — the picture's size and its offset from the frame's centre, and the frame's size and place",
+            has_slide,
+            crop_fit::crop_position
+        ),
+        cmd!(
+            query "picture.cropInfo",
+            "Crop Position",
+            [],
+            None,
+            "{id?} → {id, pictureWidth, pictureHeight, offsetX, offsetY, cropWidth, cropHeight, cropLeft, cropTop, crop: [l, t, r, b], pixels: [w, h] | null}",
+            has_slide,
+            crop_fit::crop_info
         ),
         cmd!(
             "picture.adjust",

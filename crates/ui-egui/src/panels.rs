@@ -13,6 +13,7 @@ use crate::{SlideApp, widgets};
 mod animation;
 mod background;
 mod comments;
+pub(crate) mod crop_section;
 mod designer;
 mod effect_presets;
 mod format_shape;
