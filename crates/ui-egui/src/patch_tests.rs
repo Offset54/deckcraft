@@ -9,6 +9,7 @@ use deckcraft_engine::Session;
 
 mod kerning;
 mod number_from;
+mod reverse_path;
 
 /// The whole app in a test window.
 fn harness(app: SlideApp) -> Harness<'static, SlideApp> {

@@ -10,6 +10,8 @@ use super::{
 };
 use crate::{Result, Session};
 
+mod reverse;
+
 pub fn specs() -> Vec<CommandSpec> {
     vec![
         cmd!(
@@ -49,6 +51,15 @@ pub fn specs() -> Vec<CommandSpec> {
             "{option?, textBuild?: asOne|byParagraph|byWord|byLetter, path?: [[x,y],…] or OOXML string, closed?: bool, index?}",
             has_slide,
             options
+        ),
+        cmd!(
+            "animation.reversePath",
+            "Reverse Path Direction",
+            ["Animations", "Animation"],
+            None,
+            "{index? (else the selected shapes' motion paths), ids?} → {changed, path} — the motion path runs from its end back to its start, staying where it is on the slide",
+            has_slide,
+            reverse::reverse_path
         ),
         cmd!("animation.clear", "Remove All Animations", [], None, "{index?: slide}", has_slide, clear),
         cmd!(

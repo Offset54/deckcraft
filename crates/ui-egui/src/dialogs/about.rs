@@ -29,8 +29,10 @@ pub fn about(_app: &mut SlideApp, ui: &mut Ui) {
         // ArtCraft product (docs/brand/LICENSE-brand.txt, "Forks and modified versions").
         if option_env!("CRAFT_CUSTOM_BUILD").is_some_and(|v| !v.is_empty()) {
             ui.label(
-                egui::RichText::new("Unofficial build with custom patches, based on DeckCraft by the ArtCraft team. Not made or supported by the ArtCraft team.")
-                    .color(t.text_dim),
+                egui::RichText::new(
+                    "Unofficial build with custom patches, based on DeckCraft by the ArtCraft team. Not made or supported by the ArtCraft team.",
+                )
+                .color(t.text_dim),
             );
         }
         ui.add_space(6.0);

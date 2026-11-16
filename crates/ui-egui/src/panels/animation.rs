@@ -162,6 +162,10 @@ pub(super) fn animation(app: &mut SlideApp, ui: &mut Ui) {
                 run(app, "animation.move", json!({"index": i, "to": i + 1}));
                 ui.close();
             }
+            if a.class == deckcraft_model::anim::AnimClass::Path && ui.button("Reverse Path Direction").clicked() {
+                run(app, "animation.reversePath", json!({"index": i}));
+                ui.close();
+            }
             if ui.button("Remove").clicked() {
                 ui.data_mut(|m| m.remove::<usize>(pick_id));
                 run(app, "animation.remove", json!({"index": i}));

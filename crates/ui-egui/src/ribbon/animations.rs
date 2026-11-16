@@ -83,8 +83,16 @@ pub(super) fn animations(app: &mut SlideApp, ui: &mut Ui) {
         let effect = cur.as_ref().map(|c| c.effect.as_str()).unwrap_or_default();
         let build = cur.as_ref().map(|c| text_build_id(c.text_build));
         let build_rows = marked_options(&["asOne", "byParagraph"], build);
-        let r = big_button(ui, Icon::EffectOptions, "Effect\nOptions", !effect_rows.is_empty());
+        let is_path = cur.as_ref().is_some_and(|c| c.class == AnimClass::Path);
+        let r = big_button(ui, Icon::EffectOptions, "Effect\nOptions", !effect_rows.is_empty() || is_path);
         egui::Popup::menu(&r).show(|ui| {
+            if is_path {
+                if ui.button("Reverse Path Direction").clicked() {
+                    run(app, "animation.reversePath", json!({}));
+                    ui.close();
+                }
+                ui.separator();
+            }
             for &(o, on) in &effect_rows {
                 if ui.selectable_label(on, animation_option_label(effect, o)).clicked() {
                     run(app, "animation.options", json!({"option": o}));
