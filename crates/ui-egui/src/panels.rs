@@ -16,6 +16,7 @@ mod comments;
 mod designer;
 mod effect_presets;
 mod format_shape;
+mod reading_order;
 mod smartart;
 mod thesaurus;
 
@@ -45,6 +46,7 @@ pub fn show(app: &mut SlideApp, ui: &mut Ui) {
                 "background" => "Format Background",
                 "animation" => "Animation Pane",
                 "selection" => "Selection",
+                "reading" => "Reading Order",
                 "comments" => "Comments",
                 "designer" => "Design Ideas",
                 "smartart" => "Text Pane",
@@ -71,6 +73,7 @@ pub fn show(app: &mut SlideApp, ui: &mut Ui) {
                 "background" => background(app, ui),
                 "animation" => animation(app, ui),
                 "selection" => crate::selpane::show(app, ui),
+                "reading" => reading_order::show(app, ui),
                 "comments" => comments(app, ui),
                 "designer" => designer(app, ui),
                 "smartart" => smartart(app, ui),

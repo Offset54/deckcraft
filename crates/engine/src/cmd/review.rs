@@ -10,6 +10,8 @@ use super::{
 };
 use crate::{Result, Session, Target, UiRequest};
 
+pub mod reading_order;
+
 pub fn specs() -> Vec<CommandSpec> {
     vec![
         cmd!("comment.add", "New Comment", ["Review", "Comments"], Some("Cmd+Alt+M"), "{text, x?, y?, id?: shape}", has_slide, add),
@@ -36,6 +38,15 @@ pub fn specs() -> Vec<CommandSpec> {
             |s, p| neighbour(s, p, false)
         ),
         cmd!(query "review.accessibility", "Check Accessibility", ["Review", "Accessibility"], None, "{} → [{slide, shape, issue}]", has_doc, accessibility),
+        cmd!(
+            query "review.readingOrder",
+            "Reading Order Pane",
+            ["Review", "Accessibility"],
+            None,
+            "{slide?} → {slide, items: [{id, name, kind, depth, parent, index, siblings, altText, decorative, hidden, needsAltText, text, title}]} in the order a screen reader reads them; arrange.reorder {id, index} changes it",
+            has_slide,
+            reading_order::reading_order_query
+        ),
         cmd!(query "review.spelling", "Spelling", ["Review", "Proofing"], Some("F7"), "{lang?, ignore?:[word]} → [{slide, shape?, row?, col?, notes?, para, start, end, word, lang, suggestions}] (shapes, table cells and notes; repeated words as {repeated, deleteFrom}; runs marked noProof skipped; each run in its own language, lang? for runs without one; Hunspell dictionaries installed on the system, else a built-in list of common misspellings)", has_doc, spelling),
         cmd!(
             "review.spellingChange",

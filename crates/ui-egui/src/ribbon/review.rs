@@ -24,6 +24,10 @@ pub(super) fn review(app: &mut SlideApp, ui: &mut Ui) {
     });
     group(ui, |ui| {
         big(app, ui, Icon::Accessibility, "Check\nAccessibility", "app.dialog", json!({"id": "accessibility"}));
+        let open = app.ui.pane.as_deref() == Some("reading");
+        if big_button_ex(ui, Icon::SelectionPane, "Reading\nOrder", true, false, open).0.on_hover_text("Reading Order Pane").clicked() {
+            let _ = app.run("view.pane", json!({"pane": "reading", "toggle": true}));
+        }
     });
     group(ui, |ui| {
         let r = big_button(ui, Icon::Translate, "Translate", false);

@@ -9,6 +9,7 @@ use deckcraft_engine::Session;
 
 mod kerning;
 mod number_from;
+mod reading_order;
 mod recent_colors;
 mod reverse_path;
 
