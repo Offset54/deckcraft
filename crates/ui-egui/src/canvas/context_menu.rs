@@ -245,6 +245,10 @@ fn shape_items(app: &mut SlideApp, ui: &mut egui::Ui) {
         app.dialog = Some(crate::dialogs::Dialog::new("hyperlink"));
         ui.close();
     }
+    if ui.button("Save as Picture…").clicked() {
+        crate::save_picture::save_as_picture(app);
+        ui.close();
+    }
     if ui.button("Edit Alt Text…").clicked() {
         app.dialog = Some(crate::dialogs::Dialog::new("altText"));
         ui.close();

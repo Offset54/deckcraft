@@ -13,6 +13,7 @@ mod number_from;
 mod reading_order;
 mod recent_colors;
 mod reverse_path;
+mod save_picture;
 
 /// The whole app in a test window.
 fn harness(app: SlideApp) -> Harness<'static, SlideApp> {

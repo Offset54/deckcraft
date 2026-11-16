@@ -29,6 +29,7 @@ pub mod opening;
 pub mod presenter;
 pub mod recent_colors;
 pub mod ribbon;
+mod save_picture;
 pub mod settings;
 pub mod show;
 pub mod sorter;

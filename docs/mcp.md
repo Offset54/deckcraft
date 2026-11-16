@@ -47,7 +47,8 @@ folders:
   inserted, so playing them later reads nothing from disk.
 - Every file a command writes must lie inside the **write root**: `save_presentation`, `export`
   (every format, and every slide of an image export), `file.save`, `file.saveAs`, `file.export`,
-  and `render_slide` with a `path`, plus the `.saving` temporary file a save goes through.
+  `shape.saveAsPicture` with a `path`, and `render_slide` with a `path`, plus the `.saving`
+  temporary file a save goes through.
 - Read and write access are separate. Give the same folder twice for both; a root left out grants
   none of its access (with only `--automation-read-root`, nothing can be written to disk). Without
   either flag nothing changes.

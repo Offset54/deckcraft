@@ -37,7 +37,7 @@ pub fn specs() -> Vec<CommandSpec> {
         cmd!(noundo "file.saveAs", "Save As…", ["File"], Some("Cmd+Shift+S"), "{path, format?}", has_doc, save_as),
         cmd!(noundo "file.saveTemplate", "Save as Template…", ["File"], None, "{path}", has_doc, save_as),
         cmd!(query "file.saveBytes", "Save to Data", [], None, "{format?: deckcraft|pptx} → {data: base64}", has_doc, save_bytes_cmd),
-        cmd!(noundo "file.export", "Export…", ["File"], None, "{path, format?: png|jpeg|pptx|deckcraft|outline|rtf|pdf|gif (else by path), slide?: index, all?: bool, scale?: px per pt, layout?: slides|notes|handouts (pdf), perPage?: 1|2|3|4|6|9, paper?: letter|a4|legal|a3 (pdf), orientation?: portrait|landscape (pdf), dpi?, slides?: [index]|range (\"1-3,5\"), includeHidden?, textLayer?, frame?, transparentBackground?: bool (png: leave the slide background out), width?: px 16-3840|small|medium|large|extraLarge (gif), secondsPerSlide?: 0.1-600 (gif; 5), loop?: bool (gif; true: forever)} → {path, bytes} or {files} (png, jpeg); gif adds frames, width, height, secondsPerSlide", has_doc, export),
+        cmd!(noundo "file.export", "Export…", ["File"], None, "{path, format?: png|jpeg|tiff|bmp|pptx|deckcraft|outline|rtf|pdf|gif (else by path), slide?: index, all?: bool, scale?: px per pt, layout?: slides|notes|handouts (pdf), perPage?: 1|2|3|4|6|9, paper?: letter|a4|legal|a3 (pdf), orientation?: portrait|landscape (pdf), dpi?, slides?: [index]|range (\"1-3,5\"), includeHidden?, textLayer?, frame?, transparentBackground?: bool (png, tiff: leave the slide background out), width?: px 16-3840|small|medium|large|extraLarge (gif), secondsPerSlide?: 0.1-600 (gif; 5), loop?: bool (gif; true: forever)} → {path, bytes} or {files} (png, jpeg, tiff, bmp); gif adds frames, width, height, secondsPerSlide", has_doc, export),
         cmd!(
             query "file.info",
             "Info",
@@ -591,15 +591,21 @@ fn color_at(s: &mut Session, p: &Value) -> Result<Value> {
 
 fn export(s: &mut Session, p: &Value) -> Result<Value> {
     let path = str_param(p, "path").ok_or_else(|| bad("file.export", "missing `path`"))?.to_string();
-    let format = str_param(p, "format").unwrap_or(format_for_path(&path)).to_string();
+    // A .tif, .tiff or .bmp name asks for that picture type (Save and the CLI still treat
+    // those endings as unknown: a presentation is never saved as one picture).
+    let by_path = match crate::picture_export::picture_format_for_path(&path) {
+        Some(kind @ ("tiff" | "bmp")) => kind,
+        _ => format_for_path(&path),
+    };
+    let format = str_param(p, "format").unwrap_or(by_path).to_string();
     let st = s.doc()?;
     let scale = finite_scale(f64_or(p, "scale", 2.0));
     let transparent = bool_or(p, "transparentBackground", false);
-    if transparent && format != "png" {
-        return Err(bad("file.export", format!("a transparent background is for PNG export, not {format}")));
+    if transparent && !matches!(format.as_str(), "png" | "tiff" | "tif") {
+        return Err(bad("file.export", format!("a transparent background is for PNG export (or TIFF), not {format}")));
     }
     match format.as_str() {
-        "png" | "jpeg" | "jpg" => {
+        "png" | "jpeg" | "jpg" | "tiff" | "tif" | "bmp" => {
             let slides: Vec<usize> = match opt_usize_param(p, "slide", "file.export")? {
                 Some(i) => vec![i],
                 None if bool_or(p, "all", false) => (0..st.doc.slides.len()).collect(),
@@ -617,7 +623,10 @@ fn export(s: &mut Session, p: &Value) -> Result<Value> {
                     *i,
                     &deckcraft_render::RenderOpts { scale, transparent_background: transparent, ..Default::default() },
                 );
-                let bytes = picture_bytes(&img, &format, scale);
+                let bytes = match crate::picture_export::picture_format(&format) {
+                    Some(kind @ ("tiff" | "bmp")) => crate::picture_export::encode(&img, kind, scale)?,
+                    _ => picture_bytes(&img, &format, scale),
+                };
                 let out = if slides.len() == 1 {
                     path.clone()
                 } else {

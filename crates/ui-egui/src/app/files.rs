@@ -193,6 +193,8 @@ impl SlideApp {
             "png" => ("png", "png", false),
             "pngAll" => ("png", "png", true),
             "jpeg" | "jpg" => ("jpg", "jpeg", false),
+            "tiff" | "tif" => ("tif", "tiff", false),
+            "bmp" => ("bmp", "bmp", false),
             "pptx" => ("pptx", "pptx", false),
             "outline" | "txt" => ("txt", "outline", false),
             "rtf" => ("rtf", "rtf", false),
@@ -229,6 +231,10 @@ impl SlideApp {
                     any = self.download(&file, Ok(bytes)) || any;
                 }
                 return any;
+            }
+            "tiff" | "bmp" => {
+                let img = deckcraft_render::render_slide(&doc, slide, &deckcraft_render::RenderOpts { scale: 2.0, ..Default::default() });
+                deckcraft_engine::picture_export::encode(&img, format, 2.0)
             }
             "pdf" => deckcraft_engine::cmd::file::pdf_bytes(&doc, &extra),
             "gif" => deckcraft_engine::cmd::file::gif_bytes(&doc, &extra),

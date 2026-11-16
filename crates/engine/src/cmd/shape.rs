@@ -18,6 +18,7 @@ mod appearance;
 pub mod crop_fit;
 mod freeform;
 mod picture;
+mod save_picture;
 mod size;
 
 pub(crate) use appearance::gradient_param;
@@ -165,6 +166,15 @@ pub fn specs() -> Vec<CommandSpec> {
             "{on?: bool (default: toggle)}: crop handles on the selected picture; drag them, or the picture inside the frame. Enter or Escape ends it",
             has_selection,
             crop_mode
+        ),
+        cmd!(
+            noundo "shape.saveAsPicture",
+            "Save as Picture…",
+            [],
+            None,
+            "{path?, format?: png|jpeg|gif|tiff|bmp (else by path, else png), ids?, scale?: 0.01..16 px per pt (2)} → {format, width, height, bytes, path | data: base64} — the objects drawn together as they look on the slide; png and tiff keep transparency, the others are drawn on white",
+            has_selection,
+            save_picture::save_as_picture
         ),
         cmd!(
             "picture.cropFill",
