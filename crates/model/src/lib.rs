@@ -13,6 +13,7 @@ pub mod chart;
 pub mod defaults;
 pub mod edit;
 pub mod numfmt;
+pub mod recent;
 pub mod resolve;
 pub mod style;
 pub mod table;
@@ -1012,6 +1013,10 @@ pub struct Presentation {
     /// Unmodelled presentation-level XML kept for round-trip.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub raw_ext: Option<String>,
+    /// Recent Colors: custom colours last picked in a colour menu, newest first, at most
+    /// [`recent::MAX_RECENT_COLORS`] (`p:clrMru` in presProps).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub recent_colors: Vec<Rgba>,
 }
 
 /// A drawing guide: a vertical line at `pos` points from the slide's left edge, or a horizontal

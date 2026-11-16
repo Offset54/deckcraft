@@ -304,6 +304,7 @@ impl SlideApp {
         self.media.sync_video_textures(&ctx);
         canvas::trackpad_twist(self, &ctx);
         eyedropper::tick(self, &ctx);
+        crate::recent_colors::tick(self, &ctx);
         self.opening_ui(&ctx);
         if self.show.is_some() {
             self.anim_preview = None;

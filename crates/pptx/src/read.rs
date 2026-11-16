@@ -883,6 +883,11 @@ fn read_guides_and_show(p: &mut Presentation, imp: &Imp, pres_part: &Part) {
     {
         p.show = read_show(sp, &imp.custom_show_names);
     }
+    if let Some(r) = pres_part.rels.first_of("presProps")
+        && let Some(d) = pkg.xml(&r.target)
+    {
+        p.recent_colors = crate::recent_colors::read(&d.root);
+    }
 }
 
 /// Theme, background, shapes and colour map shared by the notes and handout masters.

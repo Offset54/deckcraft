@@ -20,6 +20,7 @@ mod font;
 mod kerning;
 mod painter;
 mod paragraph;
+mod recent_colors;
 mod ruler;
 mod text_effects;
 
@@ -115,6 +116,16 @@ pub fn specs() -> Vec<CommandSpec> {
             has_text_or_shapes,
             spacing
         ),
+        cmd!(
+            noundo "format.recentColor",
+            "Recent Colors",
+            [],
+            None,
+            "{color: #RRGGBB} → {colors} — remember a custom colour with the presentation (newest first, at most 10)",
+            has_doc,
+            recent_colors::recent_color
+        ),
+        cmd!(query "format.recentColors", "Recent Colors", [], None, "{} → {colors: [#RRGGBB, …]} newest first", has_doc, recent_colors::recent_colors),
         cmd!("format.clear", "Clear All Formatting", ["Home", "Font"], Some("Cmd+Space"), "{}", has_text_or_shapes, clear),
         cmd!(
             "format.fontDialog",

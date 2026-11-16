@@ -382,6 +382,7 @@ pub fn color_popup(button: &Response) -> egui::Popup<'_> {
 pub fn color_grid(ui: &mut Ui, scheme: &ColorScheme, none_label: Option<&str>) -> Option<Option<ColorRef>> {
     // The Eyedropper's colour, handed back as if its swatch had been clicked.
     if let Some(c) = crate::eyedropper::take_result(ui.ctx()).and_then(|hex| Rgba::from_hex(&hex)) {
+        crate::recent_colors::note(ui.ctx(), c);
         ui.close();
         return Some(Some(ColorRef::rgb(c)));
     }
@@ -459,6 +460,32 @@ pub fn color_grid(ui: &mut Ui, scheme: &ColorScheme, none_label: Option<&str>) -
             }
         }
     });
+    // Recent Colors: the custom colours last taken from More Colors or the Eyedropper.
+    let recent = crate::recent_colors::shown(ui.ctx());
+    if !recent.is_empty() {
+        ui.add_space(4.0);
+        ui.label(egui::RichText::new("Recent Colors").font(theme::bold(12.0)));
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 3.0;
+            for c in recent {
+                let (r, resp) = ui.allocate_exact_size(vec2(cell, cell), Sense::click());
+                let hover = resp.hovered();
+                ui.painter().rect(
+                    r.shrink(1.0),
+                    CornerRadius::same(2),
+                    theme::to_color32(c),
+                    Stroke::new(if hover { 2.0 } else { 1.0 }, if hover { t.accent } else { t.border }),
+                    egui::StrokeKind::Inside,
+                );
+                // Named for screen readers and tests; the other swatches are named by their tips.
+                let name = format!("Recent color #{}", c.hex());
+                resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &name));
+                if resp.on_hover_text(format!("#{}", c.hex())).clicked() {
+                    out = Some(Some(ColorRef::rgb(c)));
+                }
+            }
+        });
+    }
     ui.separator();
     if let Some(n) = none_label
         && ui.button(n).clicked()
@@ -475,6 +502,7 @@ pub fn color_grid(ui: &mut Ui, scheme: &ColorScheme, none_label: Option<&str>) -
             && ui.input(|i| i.key_pressed(egui::Key::Enter))
             && let Some(c) = Rgba::from_hex(&hex)
         {
+            crate::recent_colors::note(ui.ctx(), c);
             out = Some(Some(ColorRef::rgb(c)));
         }
     });

@@ -1215,6 +1215,7 @@ fn pres_props_xml(p: &Presentation) -> Vec<u8> {
         w.close("p:extLst");
     }
     w.close("p:showPr");
+    crate::recent_colors::write(&mut w, p);
     w.close("p:presentationPr");
     w.finish()
 }
