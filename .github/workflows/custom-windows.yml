@@ -80,7 +80,10 @@ jobs:
           # is where a patch the release broke is caught: nothing is published if a test fails.
           case "$APP" in
             pdfcraft)  pkgs="-p pdfcraft-ui-egui"; filters="scroll_speed custom_build" ;;
-            deckcraft) pkgs="-p deckcraft-engine -p deckcraft-ui-egui"; filters="crop custom_build" ;;
+            # Each patch keeps its tests in a module named patch_tests, in whichever crate it touches.
+            deckcraft)
+              pkgs="-p deckcraft-model -p deckcraft-anim -p deckcraft-pptx -p deckcraft-pdf -p deckcraft-engine -p deckcraft-ui-egui"
+              filters="crop custom_build patch_tests first_slide_number" ;;
             *) echo "::error::no patch tests are listed for $APP"; exit 1 ;;
           esac
           cargo test --locked --lib $pkgs -- $filters
