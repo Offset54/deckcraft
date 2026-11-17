@@ -27,13 +27,8 @@ pub fn about(_app: &mut SlideApp, ui: &mut Ui) {
         ui.label("An open-source, clean-room project. Not affiliated with Microsoft.");
         // A custom build is a published modified version: it must not present itself as an
         // ArtCraft product (docs/brand/LICENSE-brand.txt, "Forks and modified versions").
-        if option_env!("CRAFT_CUSTOM_BUILD").is_some_and(|v| !v.is_empty()) {
-            ui.label(
-                egui::RichText::new(
-                    "Unofficial build with custom patches, based on DeckCraft by the ArtCraft team. Not made or supported by the ArtCraft team.",
-                )
-                .color(t.text_dim),
-            );
+        if let Some(notice) = custom_build_notice(option_env!("CRAFT_CUSTOM_BUILD")) {
+            ui.label(egui::RichText::new(notice).color(t.text_dim));
         }
         ui.add_space(6.0);
         ui.hyperlink_to("Join our community on Discord", deckcraft_engine::links::DISCORD);
@@ -59,6 +54,16 @@ pub fn version_line() -> String {
     s
 }
 
+/// What the About window says in a custom build (built with `CRAFT_CUSTOM_BUILD` set to its
+/// label): that it is unofficial and whose app it is based on. An official build (`None`, or an
+/// empty label) says nothing. The brand licence requires this of a published modified version;
+/// removing it makes a patched build read as an ArtCraft release.
+pub(crate) fn custom_build_notice(custom_build: Option<&str>) -> Option<&'static str> {
+    custom_build
+        .is_some_and(|v| !v.is_empty())
+        .then_some("Unofficial build with custom patches, based on DeckCraft by the ArtCraft team. Not made or supported by the ArtCraft team.")
+}
+
 /// DeckCraft's mark, drawn in code: a slide card with a play triangle in our orange.
 pub fn paint_logo(p: &egui::Painter, r: Rect) {
     let orange = Color32::from_rgb(0xF2, 0x6B, 0x1D);
@@ -73,6 +78,21 @@ pub fn paint_logo(p: &egui::Painter, r: Rect) {
         Color32::WHITE,
         Stroke::NONE,
     ));
+}
+
+#[cfg(test)]
+mod patch_tests {
+    use super::custom_build_notice;
+
+    #[test]
+    fn a_custom_build_says_it_is_unofficial_and_an_official_one_says_nothing() {
+        assert_eq!(custom_build_notice(None), None);
+        assert_eq!(custom_build_notice(Some("")), None, "an empty label is an official build");
+        let notice = custom_build_notice(Some("0.18.2-custom.3")).unwrap_or_default();
+        assert!(notice.starts_with("Unofficial build"), "{notice}");
+        assert!(notice.contains("based on DeckCraft by the ArtCraft team"), "{notice}");
+        assert!(notice.contains("Not made or supported by the ArtCraft team"), "{notice}");
+    }
 }
 
 #[cfg(test)]
