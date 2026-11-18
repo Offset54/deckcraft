@@ -3,3 +3,5 @@
 mod automation_roots;
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod batch_budget;
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod phase1_sample;
