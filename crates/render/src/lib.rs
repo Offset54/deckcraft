@@ -17,6 +17,7 @@ mod light;
 
 mod compound;
 mod extent;
+pub mod golden;
 mod images;
 mod metafile;
 mod morph_path;
