@@ -917,3 +917,5 @@ mod soak_tests;
 mod tests;
 #[cfg(test)]
 mod tests_keys;
+#[cfg(test)]
+mod tests_registry_audit;
