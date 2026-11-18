@@ -123,7 +123,7 @@ fn command_for(purpose: FilePurpose, name: &str, bytes: &[u8]) -> Result<&'stati
         FilePurpose::Open => open_command(name),
         FilePurpose::Infer => infer_command(name, bytes),
     };
-    cmd.ok_or_else(|| format!("{name}: DeckCraft can't open this kind of file"))
+    cmd.ok_or_else(|| format!("{name}: {} can't open this kind of file", deckcraft_model::brand::NAME))
 }
 
 impl SlideApp {
@@ -198,10 +198,10 @@ impl SlideApp {
             "pptx" => ("pptx", "pptx", false),
             "outline" | "txt" => ("txt", "outline", false),
             "rtf" => ("rtf", "rtf", false),
-            "deckcraft" => ("deckcraft", "deckcraft", false),
+            "deckcraft" | "slidecraft" => (deckcraft_model::brand::NATIVE_EXT, "deckcraft", false),
             "gif" => ("gif", "gif", false),
             other => {
-                self.set_status(format!("DeckCraft can't export “{other}”"));
+                self.set_status(format!("{} can't export “{other}”", deckcraft_model::brand::NAME));
                 return false;
             }
         };
@@ -455,7 +455,7 @@ impl SlideApp {
 
     pub fn save_as_dialog(&mut self, format: &str) {
         let name = self.session.active().map(|d| d.title()).unwrap_or_else(|| "Presentation".into());
-        let ext = if format == "pptx" { "pptx" } else { "deckcraft" };
+        let ext = if format == "pptx" { "pptx" } else { deckcraft_model::brand::NATIVE_EXT };
         let suggested = format!("{name}.{ext}");
         if let Some(pick) = self.services.pick_save.as_mut() {
             if let Some(path) = pick(&suggested) {
@@ -522,7 +522,7 @@ impl SlideApp {
         let own = d.path.as_deref().and_then(|p| std::path::Path::new(p).file_name()).map(|n| n.to_string_lossy().to_string());
         let (name, save_as) = match (ext, own) {
             (None, Some(own)) => (own, false),
-            (ext, _) => (format!("{}.{}", d.title(), ext.unwrap_or("deckcraft")), true),
+            (ext, _) => (format!("{}.{}", d.title(), ext.unwrap_or(deckcraft_model::brand::NATIVE_EXT)), true),
         };
         let saved = save_bytes(&d.doc, format_for_path(&name)).map_err(|e| e.to_string()).and_then(|bytes| {
             let host = self.services.host_save.as_mut().ok_or("no page to save to")?;

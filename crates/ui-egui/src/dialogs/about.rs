@@ -20,22 +20,23 @@ pub fn about(_app: &mut SlideApp, ui: &mut Ui) {
     ui.vertical_centered(|ui| {
         let (r, _) = ui.allocate_exact_size(vec2(64.0, 64.0), Sense::hover());
         paint_logo(ui.painter(), r);
-        ui.label(egui::RichText::new("DeckCraft").font(theme::bold(22.0)));
+        ui.label(egui::RichText::new(deckcraft_model::brand::NAME).font(theme::bold(22.0)));
         ui.label(egui::RichText::new(version_line()).color(t.text_dim));
         ui.add_space(6.0);
         ui.label("Presentations and slide shows, rebuilt from scratch in pure Rust.");
         ui.label("An open-source, clean-room project. Not affiliated with Microsoft.");
-        // A custom build is a published modified version: it must not present itself as an
-        // ArtCraft product (docs/brand/LICENSE-brand.txt, "Forks and modified versions").
+        // A published modified version must not present itself as an ArtCraft product
+        // (docs/brand/LICENSE-brand.txt, "Forks and modified versions"): SlideCraft always says
+        // what it is based on, and a custom build says so as well.
+        ui.label(egui::RichText::new(deckcraft_model::brand::BASED_ON).color(t.text_dim));
         if let Some(notice) = custom_build_notice(option_env!("CRAFT_CUSTOM_BUILD")) {
             ui.label(egui::RichText::new(notice).color(t.text_dim));
         }
         ui.add_space(6.0);
-        ui.hyperlink_to("Join our community on Discord", deckcraft_engine::links::DISCORD);
-        ui.hyperlink_to("getartcraft.com/apps/deckcraft", deckcraft_engine::links::APP_PAGE);
         ui.hyperlink_to("Source on GitHub", deckcraft_engine::links::GITHUB);
+        ui.hyperlink_to("DeckCraft, the app it is based on", deckcraft_engine::links::UPSTREAM);
         ui.add_space(6.0);
-        ui.label(egui::RichText::new("MIT OR Apache-2.0 · © 2026 ArtCraft Team and the DeckCraft contributors").size(11.0).color(t.text_faint));
+        ui.label(egui::RichText::new(deckcraft_model::brand::UPSTREAM_COPYRIGHT).size(11.0).color(t.text_faint));
     });
 }
 
@@ -59,9 +60,7 @@ pub fn version_line() -> String {
 /// empty label) says nothing. The brand licence requires this of a published modified version;
 /// removing it makes a patched build read as an ArtCraft release.
 pub(crate) fn custom_build_notice(custom_build: Option<&str>) -> Option<&'static str> {
-    custom_build
-        .is_some_and(|v| !v.is_empty())
-        .then_some("Unofficial build with custom patches, based on DeckCraft by the ArtCraft team. Not made or supported by the ArtCraft team.")
+    custom_build.is_some_and(|v| !v.is_empty()).then_some("Unofficial build with custom patches.")
 }
 
 /// DeckCraft's mark, drawn in code: a slide card with a play triangle in our orange.
@@ -90,8 +89,8 @@ mod patch_tests {
         assert_eq!(custom_build_notice(Some("")), None, "an empty label is an official build");
         let notice = custom_build_notice(Some("0.18.2-custom.3")).unwrap_or_default();
         assert!(notice.starts_with("Unofficial build"), "{notice}");
-        assert!(notice.contains("based on DeckCraft by the ArtCraft team"), "{notice}");
-        assert!(notice.contains("Not made or supported by the ArtCraft team"), "{notice}");
+        // The credit to DeckCraft and the ArtCraft team is shown in every build (brand::BASED_ON).
+        assert!(deckcraft_model::brand::BASED_ON.contains("based on DeckCraft by the ArtCraft team"));
     }
 }
 

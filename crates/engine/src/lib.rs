@@ -916,6 +916,8 @@ mod soak_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_brand;
+#[cfg(test)]
 mod tests_keys;
 #[cfg(test)]
 mod tests_registry_audit;

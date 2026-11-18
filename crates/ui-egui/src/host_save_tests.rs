@@ -57,7 +57,7 @@ fn path(app: &SlideApp) -> Option<String> {
     app.session.active().and_then(|d| d.path.clone())
 }
 
-/// The bug this prevents: Save of a .pptx the page sent came back as `<name>.deckcraft`. Save
+/// The bug this prevents: Save of a .pptx the page sent came back as a native `<name>.slidecraft`. Save
 /// now hands the page the opened file under its own name and format, not as a new file; Save As
 /// says it is a new file and becomes the file the next Save writes.
 #[test]
@@ -73,7 +73,7 @@ fn host_saves_go_back_to_the_opened_file() {
     assert!(!app.session.active().unwrap().is_dirty());
     edit(&mut app);
     app.save();
-    let names = [("Lecture 3.pptx", false), ("Lecture 3.deckcraft", true), ("Lecture 3.deckcraft", false)];
+    let names = [("Lecture 3.pptx", false), ("Lecture 3.slidecraft", true), ("Lecture 3.slidecraft", false)];
     assert_eq!(calls(&got), names.map(|(n, s)| (n.to_string(), s)));
     // The first save is a .pptx that reopens with the edit in it.
     let first = got.borrow()[0].2.clone();
@@ -87,7 +87,7 @@ fn host_saves_go_back_to_the_opened_file() {
 #[test]
 fn host_save_of_an_untitled_presentation_is_save_as() {
     let (mut app, got) = host_app(false);
-    let name = format!("{}.deckcraft", app.session.active().unwrap().title());
+    let name = format!("{}.slidecraft", app.session.active().unwrap().title());
     edit(&mut app);
     app.save();
     edit(&mut app);
@@ -102,7 +102,7 @@ fn a_file_the_page_never_sent_saves_as_a_new_file() {
     let (mut app, got) = host_app(false);
     app.open_or_insert_bytes("dropped.pptx", &pptx(1));
     app.save();
-    assert_eq!(calls(&got), [("dropped.deckcraft".to_string(), true)]);
+    assert_eq!(calls(&got), [("dropped.slidecraft".to_string(), true)]);
 }
 
 /// Exports and Print are copies: named after the presentation, not a new file, and the
@@ -167,10 +167,10 @@ fn palette_save_goes_to_the_page() {
 }
 
 /// A file the page sent without a name, or with a name that isn't a presentation's, has no file
-/// of its own: Save is a new `.deckcraft`, never an overwrite of an invented `Presentation.pptx`.
+/// of its own: Save is a new native `.slidecraft`, never an overwrite of an invented `Presentation.pptx`.
 #[test]
 fn a_file_sent_without_a_presentation_name_saves_as_a_new_file() {
-    for (name, saved) in [(None, "Presentation.deckcraft"), (Some("Talk"), "Talk.deckcraft")] {
+    for (name, saved) in [(None, "Presentation.slidecraft"), (Some("Talk"), "Talk.slidecraft")] {
         let (mut app, got) = host_app(false);
         app.open_from_host(name, &pptx(2));
         assert_eq!(app.session.documents().len(), 1, "{name:?}");
@@ -191,7 +191,7 @@ fn an_outline_from_the_page_opens_as_a_new_presentation() {
     assert_eq!(app.session.active().unwrap().doc.slides.len(), 3);
     assert_eq!(path(&app), None);
     app.save();
-    assert_eq!(calls(&got), [("notes.deckcraft".to_string(), true)]);
+    assert_eq!(calls(&got), [("notes.slidecraft".to_string(), true)]);
 }
 
 /// A damaged file from the page opens as an untitled "(Repaired)" copy, so Save is a new file
@@ -209,5 +209,5 @@ fn a_damaged_file_from_the_page_saves_as_a_new_repaired_file() {
     assert_eq!(path(&app), None);
     assert!(app.session.active().unwrap().title().ends_with("(Repaired)"));
     app.save();
-    assert_eq!(calls(&got), [("talk (Repaired).deckcraft".to_string(), true)]);
+    assert_eq!(calls(&got), [("talk (Repaired).slidecraft".to_string(), true)]);
 }
