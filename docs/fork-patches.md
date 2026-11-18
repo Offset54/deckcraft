@@ -1,15 +1,15 @@
 # Fork patches
 
-> **Last updated:** 2026-11-17 · **Base:** `storytold/deckcraft` v0.18.1 (`7cc73ab`) · **Fork head:** `3c1d282` (`custom/patches`, tag `v0.18.2-custom.3`)
+> **Last updated:** 2026-11-18 · **Base:** `storytold/deckcraft` `main` v0.19.0 (`5c69849`), merged in `86be392` · **Patches written on:** v0.18.1 (`7cc73ab`), up to `3c1d282` (`custom/patches`, tag `v0.18.2-custom.3`)
 
 Everything this fork carries on top of the official release. No later change may regress one of
 these. `CUSTOM-BUILD.md` is the short, user-facing list; this file is the engineering inventory:
 what each patch does, the files it touches and the tests that hold it.
 
-How it was produced: `git log 7cc73ab..HEAD` (14 commits, 76 files, +4,337 / −27). The fork is
-based on the v0.18.1 release merge, not on upstream `main`. Upstream `main` is 132 commits further
-on (`5c69849`, v0.19.0); a trial `git merge-tree` of it into the fork head reports **no textual
-conflict** (not compiled or tested; see `docs/recon.md` §7).
+How it was produced: `git log 7cc73ab..3c1d282` (14 commits, 76 files, +4,337 / −27). The
+patches were written on the v0.18.1 release. On 2026-11-18 upstream `main` (`5c69849`, v0.19.0,
+132 commits further on) was merged into the fork (`86be392`) with no conflicts; every patch test
+and `cargo xtask ci` pass on the result.
 
 ## Running the patch tests
 
@@ -88,3 +88,4 @@ Files each feature patch touches (paths under `crates/`):
 |---|---|---|
 | 2026-11-17 | The patch-test command above at `3c1d282`, on Linux x64, with craft-fonts at `cc9269c` | 93 passed, 0 failed (model 9, anim 49, pptx 2, pdf 1, engine 2, ui-egui 30) |
 | 2026-11-17 | After adding patch 11's test: `cargo xtask ci` | All 8 steps passed (fmt, pdf-deps, clippy, test, doctest, assets, layers, wasm); the new test is among them |
+| 2026-11-18 | `cargo xtask ci` after merging upstream `main` v0.19.0 (`86be392`) | All 8 steps passed; 2,179 tests, 0 failed |

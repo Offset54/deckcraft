@@ -1,6 +1,6 @@
 # Phase 0 reconnaissance
 
-> **Written:** 2026-11-17 · **Status:** Phase 0 complete, waiting for go-ahead · **No feature code changed** (one test added for a fork patch)
+> **Written:** 2026-11-17 · **Status:** Phase 0 complete; base moved to upstream v0.19.0 on 2026-11-18 (decision 2), Phase 1 under way · **No feature code changed** (one test added for a fork patch)
 
 What the three source apps look like today, how their models and command systems compare, how the
 host renders against the alternatives, what this fork carries, and what is most likely to go
@@ -375,7 +375,7 @@ Each decision is recorded properly in `docs/porting-log.md` when its phase start
 1. **Placeholders.** The brief's `{{APP_NAME}}`, `{{EXT}}` and the optional image-generation
    bridge are unfilled. Phase 1 does not need them; the rebrand and the native format do. This
    document assumes `{{MY_DECKCRAFT_FORK_URL}}` is this repository.
-2. **Base.** Stay on v0.18.1, or move the patches onto upstream `main` (v0.19.0) before Phase 1.
+2. **Base.** *Decided 2026-11-18: move first.* Stay on v0.18.1, or move the patches onto upstream `main` (v0.19.0) before Phase 1.
    Recommended: move first. The trial merge is clean, and Phases 2 and 6 want the `craft-libs`
    cut-overs upstream already made.
 3. **Shared crates.** Use `craft-text`, `craft-fig`, `craft-idml` and `craft-pdf` from
