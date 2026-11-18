@@ -105,11 +105,9 @@ budget is mostly a rendering budget. 60 fps pan and zoom cannot be measured in t
 - **Build disk.** A full `cargo xtask ci` with incremental builds filled this container's disk
   allowance (28 GB of `target/`). CI here now runs with `CARGO_INCREMENTAL=0`.
 
-## 5. Decisions that need you
+## 5. Decisions
 
-1. **Where the ten real-world decks live** for the round-trip suite: a private folder on your
-   machine, or a separate corpus repository you own.
-2. **Branches.** Everything so far is on `claude/new-session-lm99ab`. Say whether Phase 2 continues
-   there or on a new branch, and where finished phases merge (`custom/patches`?).
-3. **Still open from Phase 0:** the product name, the file extension and the image-generation
-   bridge.
+Answered 2026-11-18 ([`decisions/001-product-identity.md`](../decisions/001-product-identity.md)):
+the real-world decks stay in a private folder on the owner's computer; work continues on this
+branch; the product is SlideCraft (`io.github.offset54.slidecraft`, `.slidecraft`). Still open:
+the image-generation bridge, and the installer identity step described in that record.

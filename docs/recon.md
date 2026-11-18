@@ -372,7 +372,7 @@ Each decision is recorded properly in `docs/porting-log.md` when its phase start
 
 ## 11. Decisions needed
 
-1. **Placeholders.** The brief's `{{APP_NAME}}`, `{{EXT}}` and the optional image-generation
+1. **Placeholders.** *Decided 2026-11-18: SlideCraft, `io.github.offset54.slidecraft`, `.slidecraft` ([`decisions/001-product-identity.md`](decisions/001-product-identity.md)).* The brief's `{{APP_NAME}}`, `{{EXT}}` and the optional image-generation
    bridge are unfilled. Phase 1 does not need them; the rebrand and the native format do. This
    document assumes `{{MY_DECKCRAFT_FORK_URL}}` is this repository.
 2. **Base.** *Decided 2026-11-18: move first.* Stay on v0.18.1, or move the patches onto upstream `main` (v0.19.0) before Phase 1.

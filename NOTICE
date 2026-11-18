@@ -1,11 +1,12 @@
-DeckCraft
+SlideCraft, based on DeckCraft
 Copyright (c) 2026 ArtCraft Team and the DeckCraft contributors.
 Licensed under the MIT License or the Apache License, Version 2.0, at your option
 (LICENSE-MIT, LICENSE-APACHE).
 
-The ArtCraft name, wordmark and logos in docs/brand/ are trademarks of the ArtCraft Team. They are
-not open source and are not covered by the license above; their terms are in
-docs/brand/LICENSE-brand.txt.
+SlideCraft is a modified version of DeckCraft. It is not made, endorsed or supported by the
+ArtCraft team. The ArtCraft name, wordmark and logos are trademarks of the ArtCraft Team, not open
+source and not covered by the license above; their terms are in docs/brand/LICENSE-brand.txt. As
+those terms require of a modified version, SlideCraft carries none of them.
 
 Third-party material
 
