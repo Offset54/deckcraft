@@ -236,6 +236,8 @@ fn bench(args: &[String]) -> Result<(), String> {
         Ok(())
     })?;
     steps.insert(1, ("render all slides (1×)", render_all));
+    let (edit_steps, undo_bytes) = bench_edits(&doc, &name, runs)?;
+    steps.extend(edit_steps);
     let peak = peak_rss_mib();
     if as_json {
         let v = json!({
@@ -245,6 +247,7 @@ fn bench(args: &[String]) -> Result<(), String> {
             "runs": runs,
             "steps": steps.iter().map(|(k, (m, x))| json!({"step": k, "medianMs": m, "maxMs": x})).collect::<Vec<_>>(),
             "renderMsPerSlide": per_slide.iter().map(|m| m.0).collect::<Vec<_>>(),
+            "undoStepBytes": {"oneShape": undo_bytes.0, "deckWide": undo_bytes.1},
             "peakRssMiB": peak,
         });
         outln!("{}", serde_json::to_string_pretty(&v).unwrap_or_default());
@@ -256,11 +259,55 @@ fn bench(args: &[String]) -> Result<(), String> {
         if let Some((i, m)) = per_slide.iter().enumerate().max_by(|a, b| a.1.0.total_cmp(&b.1.0)) {
             outln!("  slowest slide            {:>9.1} ms   (slide {})", m.0, i + 1);
         }
+        if let Some(b) = undo_bytes.0 {
+            outln!("  undo step, one shape     {:>9.1} KiB", b as f64 / 1024.0);
+        }
+        if let Some(b) = undo_bytes.1 {
+            outln!("  undo step, whole deck    {:>9.1} KiB", b as f64 / 1024.0);
+        }
         if let Some(p) = peak {
             outln!("  peak memory              {p:>9.1} MiB");
         }
     }
     Ok(())
+}
+
+/// Editing costs: moving one shape (one undo step), undoing it, and a change that restyles every
+/// slide (the theme's accent colour). Each undo step keeps the presentation before it, sharing every
+/// slide the edit didn't touch; the bytes are what a step keeps that the presentation after it
+/// doesn't share (`deckcraft_engine::undo_cost`). `None` where the deck has no shape to move.
+type Timing = (&'static str, (f64, f64));
+fn bench_edits(
+    doc: &deckcraft_engine::model::Presentation,
+    name: &str,
+    runs: usize,
+) -> Result<(Vec<Timing>, (Option<usize>, Option<usize>)), String> {
+    let e = |x: deckcraft_engine::EngineError| x.to_string();
+    let mut s = Session::new();
+    let i = s.add_document(deckcraft_engine::DocState::new(doc.clone(), None, name.to_string()));
+    s.set_active(i);
+    let mut steps = vec![];
+    let cost = |s: &Session| -> Option<usize> {
+        let st = s.active()?;
+        st.history.undo.last().map(|u| deckcraft_engine::undo_cost(&u.doc, &st.doc))
+    };
+    let shape = doc.slides.first().and_then(|sl| sl.shapes.first()).map(|sh| sh.id.0);
+    let mut one = None;
+    if let Some(id) = shape {
+        let p = json!({"dx": 1, "ids": [id]});
+        steps.push(("move one shape (undo step)", time_ms(runs, || s.execute("shape.move", &p).map(|_| ()).map_err(e))?));
+        one = cost(&s);
+        steps.push(("undo", time_ms(runs, || s.execute("edit.undo", &json!({})).map(|_| ()).map_err(e))?));
+    }
+    let mut flip = false;
+    let restyle = time_ms(runs, || {
+        flip = !flip;
+        let accent = if flip { "#0B7285" } else { "#C2255C" };
+        s.execute("design.colors", &json!({"colors": {"accent1": accent}})).map(|_| ()).map_err(e)
+    })?;
+    steps.push(("restyle every slide", restyle));
+    let deck = cost(&s);
+    Ok((steps, (one, deck)))
 }
 
 fn info(args: &[String]) -> Result<(), String> {

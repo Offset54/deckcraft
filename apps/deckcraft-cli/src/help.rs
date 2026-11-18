@@ -152,8 +152,9 @@ server, so they conflict with --connect (a running app is not confined by them).
         usage: "bench (FILE | --sample) [--runs N] [--json]",
         summary: "time opening, drawing, saving and exporting a presentation",
         details: "Times how long FILE, or the sample presentation with --sample, takes to open, to draw each slide, to
-save as .deckcraft and .pptx, to reopen as .pptx and to export as .pdf, and the peak memory. Prints the
-median and slowest of N runs (5 by default, 1 to 1000) as a table, or as JSON with --json.
+save as .deckcraft and .pptx, to reopen as .pptx and to export as .pdf, to move a shape and undo it, and
+to change a theme colour every slide uses, plus the memory one undo step keeps and the peak memory.
+Prints the median and slowest of N runs (5 by default, 1 to 1000) as a table, or as JSON with --json.
 
   deckcraft-cli bench deck.pptx --runs 10",
     },
