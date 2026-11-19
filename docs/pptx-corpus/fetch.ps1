@@ -31,7 +31,8 @@ $repo = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 
 New-Item -ItemType Directory -Force -Path $Destination | Out-Null
 $dest = (Resolve-Path -LiteralPath $Destination).Path
-if ($dest.StartsWith($repo, [StringComparison]::OrdinalIgnoreCase)) {
+$sep = [IO.Path]::DirectorySeparatorChar
+if (($dest.TrimEnd($sep) + $sep).StartsWith($repo.TrimEnd($sep) + $sep, [StringComparison]::OrdinalIgnoreCase)) {
     throw "Destination $dest is inside the repository. Choose a folder outside it: the decks must never be committed."
 }
 
