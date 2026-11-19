@@ -9,7 +9,7 @@
 | Product name | **SlideCraft** |
 | Application identifier | `io.github.offset54.slidecraft` |
 | Native document extension | `.slidecraft` (`.deckcraft` still opens; both are the same package) |
-| Real-world test decks | A private folder on the owner's computer, run through `DECKCRAFT_PPTX_CORPUS` |
+| Real-world test decks | A separate public repo, `Offset54/slidecraft-pptx-corpus`, of openly licensed decks with a credit and licence per file, run through `DECKCRAFT_PPTX_CORPUS` (changed 2026-11-19; first decided: a private folder on the owner's computer) |
 | Branch | Phases continue on `claude/new-session-lm99ab` |
 
 ## Why
@@ -33,6 +33,15 @@
 - Save writes `.slidecraft`; Open, the file dialogs and the engine accept both extensions.
 - No ArtCraft logos, website or Discord links in the app or the README; `docs/brand/` keeps only
   the licence text. About credits DeckCraft and keeps its copyright. `tests_brand.rs` guards it.
+
+## Test decks in their own repo
+
+The real-world decks are other people's files, many saved by PowerPoint. `AGENTS.md` §1.1 keeps
+files PowerPoint produced out of this repository, so they live in a separate public repo. Only
+licences that allow public redistribution qualify there (CC0, CC-BY, CC-BY-SA, public domain, MIT,
+Apache-2.0), each file unmodified, with its author, source and licence in that repo's
+`ATTRIBUTION.md`. This repository keeps only the manifest and the baseline results
+(`docs/pptx-corpus/`).
 
 ## Kept on purpose
 

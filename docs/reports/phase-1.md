@@ -108,6 +108,6 @@ budget is mostly a rendering budget. 60 fps pan and zoom cannot be measured in t
 ## 5. Decisions
 
 Answered 2026-11-18 ([`decisions/001-product-identity.md`](../decisions/001-product-identity.md)):
-the real-world decks stay in a private folder on the owner's computer; work continues on this
+the real-world decks go to a separate public repo, `Offset54/slidecraft-pptx-corpus` (changed 2026-11-19 from a private folder); work continues on this
 branch; the product is SlideCraft (`io.github.offset54.slidecraft`, `.slidecraft`). Still open:
 the image-generation bridge, and the installer identity step described in that record.
