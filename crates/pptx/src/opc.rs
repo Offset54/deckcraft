@@ -30,6 +30,12 @@ pub const NS_A14: &str = "http://schemas.microsoft.com/office/drawing/2010/main"
 /// Modern (threaded) comments, Office 2018/8 schema.
 pub const NS_P188: &str = "http://schemas.microsoft.com/office/powerpoint/2018/8/main";
 
+/// SlideCraft's own markup, carried in `a:extLst` where PowerPoint has no equivalent (PowerPoint
+/// keeps unknown extensions and ignores them).
+pub const NS_SC: &str = "https://github.com/Offset54/deckcraft/ns/slidecraft/2026/main";
+/// `a:pPr/a:extLst/a:ext/@uri` of the paragraph typography extension (`sc:typography`).
+pub const EXT_SC_TYPOGRAPHY: &str = "{60126004-4CC5-4FBA-82AA-1248CB7A995C}";
+
 pub const RT_BASE: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/";
 pub const RT_MEDIA: &str = "http://schemas.microsoft.com/office/2007/relationships/media";
 /// A 3-D model part (`.glb`). Office relationship, not an ECMA-376 base type.

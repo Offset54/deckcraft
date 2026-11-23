@@ -590,3 +590,18 @@ fn outline_includes_table_text() {
     assert!(out.contains("Cell A1\tCell B1"), "{out}");
     assert!(out.contains("Cell A2\tCell B2"), "{out}");
 }
+
+#[test]
+fn slidecraft_typography_survives_save_and_load() {
+    use deckcraft_model::text::{Composer, TextBody};
+    let mut p = deckcraft_model::defaults::new_presentation(None);
+    let first = p.slides[0].id;
+    let s = p.slide_mut(first).expect("slide");
+    let t = s.shapes[0].text.insert(TextBody::from_text("composed"));
+    t.paragraphs[0].props.composer = Some(Composer::Paragraph);
+    t.paragraphs[0].props.hyphenate = Some(true);
+    t.paragraphs[0].props.optical_margin = Some(true);
+    let q = load(&save(&p).expect("save")).expect("load");
+    let props = &q.slides[0].shapes[0].text.as_ref().expect("text").paragraphs[0].props;
+    assert_eq!((props.composer, props.hyphenate, props.optical_margin), (Some(Composer::Paragraph), Some(true), Some(true)));
+}

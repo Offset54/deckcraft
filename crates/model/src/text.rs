@@ -306,6 +306,46 @@ pub struct ParaProps {
     pub latin_line_break: Option<bool>,
     /// `hangingPunct`: closing East Asian punctuation may hang past the end of a line.
     pub hanging_punct: Option<bool>,
+    /// How lines are chosen (SlideCraft typography; no PowerPoint equivalent). `None`
+    /// everywhere in the chain is [`Composer::SingleLine`], the layout PowerPoint files expect.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub composer: Option<Composer>,
+    /// Hyphenate words at line ends (US English; other languages are not hyphenated).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hyphenate: Option<bool>,
+    /// Optical margin alignment: punctuation and some letter edges hang into the margins so
+    /// the text edge looks straight.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optical_margin: Option<bool>,
+}
+
+/// The line breaker for a paragraph.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Composer {
+    /// Each line takes as much as fits (first fit), as PowerPoint breaks lines.
+    SingleLine,
+    /// The whole paragraph is broken at once (Knuth–Plass total fit), for even spacing and
+    /// fewer hyphens.
+    Paragraph,
+}
+
+impl Composer {
+    /// The name used by commands and files.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Composer::SingleLine => "singleLine",
+            Composer::Paragraph => "paragraph",
+        }
+    }
+
+    pub fn parse(s: &str) -> Option<Composer> {
+        match s {
+            "singleLine" | "single" => Some(Composer::SingleLine),
+            "paragraph" => Some(Composer::Paragraph),
+            _ => None,
+        }
+    }
 }
 
 impl ParaProps {
@@ -363,6 +403,9 @@ impl ParaProps {
         self.east_asian_line_break = self.east_asian_line_break.or(p.east_asian_line_break);
         self.latin_line_break = self.latin_line_break.or(p.latin_line_break);
         self.hanging_punct = self.hanging_punct.or(p.hanging_punct);
+        self.composer = self.composer.or(p.composer);
+        self.hyphenate = self.hyphenate.or(p.hyphenate);
+        self.optical_margin = self.optical_margin.or(p.optical_margin);
     }
 }
 

@@ -23,6 +23,7 @@ mod paragraph;
 mod recent_colors;
 mod ruler;
 mod text_effects;
+mod typography;
 
 pub use font::SIZES;
 use font::{
@@ -37,6 +38,7 @@ use paragraph::{
 };
 use ruler::{ruler, tabs};
 use text_effects::{case, text_outline, text_shadow, text_warp};
+use typography::typography;
 
 pub fn specs() -> Vec<CommandSpec> {
     vec![
@@ -224,6 +226,15 @@ pub fn specs() -> Vec<CommandSpec> {
             "{align?: left|center|right|justify|justLow|distributed, indentLeft?: pt, indentRight?: pt, special?: none|first|hanging, specialBy?: pt, indentFirst?: pt, spaceBefore?: pt, spaceAfter?: pt, spaceBeforeKind?: pts|pct, spaceAfterKind?: pts|pct, lineSpacing?: lines, lineSpacingPt?: pt} — with none of these, opens the Paragraph dialog",
             has_text_or_shapes,
             paragraph_dialog
+        ),
+        cmd!(
+            "format.typography",
+            "Typography",
+            ["Home", "Paragraph"],
+            None,
+            "{composer?: singleLine|paragraph (paragraph: Knuth–Plass total fit, even spacing; singleLine: first fit, as PowerPoint), hyphenate?: bool (US English; needs the paragraph composer), opticalMargin?: bool (punctuation hangs into the margins; needs the paragraph composer)} on the selected paragraphs; null returns a key to inherited; with none of them → the current paragraph's {composer, hyphenate, opticalMargin}",
+            has_text_or_shapes,
+            typography
         ),
         cmd!(
             "format.tabs",

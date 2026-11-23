@@ -576,6 +576,7 @@ pub fn ppr(w: &mut W, x: &mut Exp, o: &mut Out, tag: &str, level: Option<u8>, p:
         || p.bullet_size_points.is_some()
         || p.bullet_size_follow_text.is_some()
         || p.tabs.is_some()
+        || has_typography(p)
         || def.is_some();
     if !has_kids {
         w.empty(tag, a);
@@ -646,7 +647,32 @@ pub fn ppr(w: &mut W, x: &mut Exp, o: &mut Out, tag: &str, level: Option<u8>, p:
     if let Some(d) = def {
         rpr(w, x, o, "a:defRPr", d);
     }
+    typography_ext(w, p);
     w.close(tag);
+}
+
+fn has_typography(p: &ParaProps) -> bool {
+    p.composer.is_some() || p.hyphenate.is_some() || p.optical_margin.is_some()
+}
+
+/// SlideCraft's composer, hyphenation and optical margin settings, which PowerPoint has no
+/// markup for, in an extension it keeps and ignores. PowerPoint breaks the lines its own way.
+fn typography_ext(w: &mut W, p: &ParaProps) {
+    if !has_typography(p) {
+        return;
+    }
+    w.open0("a:extLst");
+    w.open("a:ext", A::new().a("uri", crate::opc::EXT_SC_TYPOGRAPHY));
+    w.empty(
+        "sc:typography",
+        A::new()
+            .a("xmlns:sc", crate::opc::NS_SC)
+            .o("composer", p.composer.map(|c| c.as_str()))
+            .b("hyphenate", p.hyphenate)
+            .b("opticalMargin", p.optical_margin),
+    );
+    w.close("a:ext");
+    w.close("a:extLst");
 }
 
 fn typeface(w: &mut W, tag: &str, f: &Option<String>) {

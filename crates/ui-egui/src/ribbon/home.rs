@@ -342,6 +342,8 @@ fn paragraph_group(app: &mut SlideApp, ui: &mut Ui, st: &Value) {
                     if ui.button("Tabs…").clicked() {
                         app.dialog = Some(crate::dialogs::Dialog::new("tabs"));
                     }
+                    ui.separator();
+                    typography_menu(app, ui, st);
                 });
                 let r = icon_toggle(ui, Icon::Columns, "Columns", en, false);
                 egui::Popup::menu(&r).show(|ui| {
@@ -392,6 +394,25 @@ fn paragraph_group(app: &mut SlideApp, ui: &mut Ui, st: &Value) {
             });
         });
     });
+}
+
+/// The paragraph composer, hyphenation and optical margins (`format.typography`). Hyphenation and
+/// optical margins act only under the paragraph composer, so they are greyed out without it.
+fn typography_menu(app: &mut SlideApp, ui: &mut Ui, st: &Value) {
+    let b = |k: &str| st.get(k).and_then(Value::as_bool).unwrap_or(false);
+    let composed = st.get("composer").and_then(Value::as_str) == Some("paragraph");
+    let mut on = composed;
+    if ui.checkbox(&mut on, "Paragraph Composer").on_hover_text("Break the whole paragraph at once for even spacing").changed() {
+        run(app, "format.typography", json!({"composer": if on { "paragraph" } else { "singleLine" }}));
+    }
+    let mut hyph = b("hyphenate");
+    if ui.add_enabled(composed, egui::Checkbox::new(&mut hyph, "Hyphenate")).changed() {
+        run(app, "format.typography", json!({"hyphenate": hyph}));
+    }
+    let mut optical = b("opticalMargin");
+    if ui.add_enabled(composed, egui::Checkbox::new(&mut optical, "Optical Margins")).on_hover_text("Hang punctuation into the margins").changed() {
+        run(app, "format.typography", json!({"opticalMargin": optical}));
+    }
 }
 
 /// Render drawing controls for shapes, text, arrange, quick styles, fill, and outline.

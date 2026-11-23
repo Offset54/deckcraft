@@ -139,6 +139,22 @@ pub(crate) struct RawLine {
     pub(crate) end: usize,
     /// End including trailing spaces / the break char consumed.
     next: usize,
+    /// The paragraph composer broke the line at a hyphenation point: a hyphen follows it.
+    pub(crate) hyphen: bool,
+    /// Optical margin protrusion at the line's (start, end), in points.
+    pub(crate) hang: (f64, f64),
+}
+
+impl RawLine {
+    fn plain(start: usize, end: usize, next: usize) -> RawLine {
+        RawLine { start, end, next, hyphen: false, hang: (0.0, 0.0) }
+    }
+
+    /// A line from the paragraph composer ([`crate::compose`]).
+    pub(crate) fn composed(start: usize, end: usize, next: usize, hyphen: bool, hang: (f64, f64)) -> RawLine {
+        let clean = |v: f64| if v.is_finite() { v.max(0.0) } else { 0.0 };
+        RawLine { start, end, next, hyphen, hang: (clean(hang.0), clean(hang.1)) }
+    }
 }
 
 /// Wrapping geometry of one paragraph: line widths, start offsets, wrap flag and tab settings.
@@ -161,7 +177,7 @@ pub(crate) fn break_lines(p: &ParaShaped, params: &BreakParams) -> Vec<RawLine> 
     let mut lines = vec![];
     let mut start = 0;
     if n == 0 {
-        return vec![RawLine { start: 0, end: 0, next: 0 }];
+        return vec![RawLine::plain(0, 0, 0)];
     }
     while start < n {
         let avail = if lines.is_empty() { first_w } else { rest_w };
@@ -223,7 +239,7 @@ pub(crate) fn break_lines(p: &ParaShaped, params: &BreakParams) -> Vec<RawLine> 
             end = n;
             next = n;
         }
-        lines.push(RawLine { start, end, next });
+        lines.push(RawLine::plain(start, end, next));
         if next <= start {
             // No progress: force one char.
             let last = lines.len() - 1;
@@ -238,7 +254,7 @@ pub(crate) fn break_lines(p: &ParaShaped, params: &BreakParams) -> Vec<RawLine> 
         }
         if next == n && p.cells.last().is_some_and(|c| c.ch == '\u{b}') && start >= n {
             // A trailing line break opens an empty last line.
-            lines.push(RawLine { start: n, end: n, next: n });
+            lines.push(RawLine::plain(n, n, n));
         }
     }
     lines

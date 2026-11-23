@@ -1,4 +1,5 @@
 use super::breaking::{BreakParams, RawLine, Tab, break_lines, line_metrics, measure_str, tab_advance, tab_segment, tabs_of};
+use super::compose::{ComposeOpts, compose_lines};
 use super::run::{Deco, DecoLine, GlyphRun};
 use super::shape::{SUB_SUPER, Upright, shape_para};
 use super::style::{Cell, Opts, ParaShaped, Style, spacing_pts};
@@ -6,6 +7,8 @@ use super::{
     Align, Anchor, Arc, AutoFit, BodyProps, Bullet, Caps, Ctx, FontFace, LineInfo, Rect, Shape, Spacing, Strike, TextBody, TextDir, TextLayout, bidi,
     joins_following, joins_preceding, resolve,
 };
+
+use deckcraft_model::text::Composer;
 
 #[cfg(test)]
 thread_local! {
@@ -123,6 +126,12 @@ impl BoxGeom {
 
     /// East Asian vertical text: CJK stands upright in text turned a quarter turn; stacked text
     /// stands every character upright, one under the other.
+    /// East Asian vertical or stacked text, whose characters stand upright: the paragraph
+    /// composer leaves it to the single-line breaker.
+    fn upright_text(&self) -> bool {
+        !matches!(self.upright(), Upright::None)
+    }
+
     fn upright(&self) -> Upright {
         match self.vert {
             TextDir::EaVertical => Upright::Cjk,
@@ -268,6 +277,7 @@ pub(crate) fn layout_scaled(ctx: &Ctx, shape: &Shape, body: &TextBody, bp: &Body
             let to_empty = body.paragraphs.get(pl.info.para).is_some_and(|p| p.is_empty()) && opts.prompt_color.is_none();
             emit_bullet(&mut out, p, &pl, ox + g.col_x(pl.info.column), to_empty);
             emit_line_runs(&mut out, p, &pl.info, &pl.place);
+            emit_hyphen(&mut out, p, &pl.info, &pl.place);
         }
         out.lines.push(pl.info);
     }
@@ -314,18 +324,20 @@ fn place_paragraph(p: &ParaShaped, pi: usize, g: &BoxGeom, spacing: (f64, bool),
     let tabs = tabs_of(props);
     let first_w = (g.col_w - first_x - mr).max(1.0);
     let rest_w = (g.col_w - rest_x - mr).max(1.0);
-    let raw = break_lines(
-        p,
-        &BreakParams {
-            first_w,
-            rest_w,
-            wrap: g.wrap,
-            tab_stops: &tabs,
-            default_tab: props.default_tab.unwrap_or(72.0),
-            x0_first: first_x,
-            x0_rest: rest_x,
-        },
-    );
+    let params = BreakParams {
+        first_w,
+        rest_w,
+        wrap: g.wrap,
+        tab_stops: &tabs,
+        default_tab: props.default_tab.unwrap_or(72.0),
+        x0_first: first_x,
+        x0_rest: rest_x,
+    };
+    let composed = match props.composer {
+        Some(Composer::Paragraph) if !g.upright_text() => compose_lines(p, &params, ComposeOpts::of(p)),
+        _ => None,
+    };
+    let raw = composed.unwrap_or_else(|| break_lines(p, &params));
     // The first paragraph's space before counts only when the body says so.
     let before = if pi == 0 && !first_last { 0.0 } else { spacing_pts(props.space_before, p.lead_size) };
     flow.y += before.max(0.0) + flow.prev_after;
@@ -522,23 +534,37 @@ fn place_line(env: &ParaEnv, pi: usize, rl: &RawLine, li: usize, is_last: bool, 
     let line_cells = p.cells.get(rl.start..rl.end).unwrap_or(&[]);
     let (mut adv, width) = line_advances(env, rl, is_last, x0);
     let align = props.align.unwrap_or(Align::Left);
-    let slack = (avail - width).max(0.0);
+    // The paragraph composer's lines: a hyphen drawn after the text, and optical margin
+    // protrusion that widens the line box at either end.
+    let hyphen_w = if rl.hyphen {
+        line_cells.last().and_then(|c| p.faces.get(c.face).zip(p.styles.get(c.style))).map(|(f, st)| measure_str(f, st.size, "-").0).unwrap_or(0.0)
+    } else {
+        0.0
+    };
+    let (hang_l, hang_r) = rl.hang;
+    let avail = avail + hang_l + hang_r;
+    let slack = (avail - width - hyphen_w).max(0.0);
     let stretch = !is_last && g.wrap && slack > 0.0;
-    let (kashida, filled) = justify_line(p, rl, &mut adv, align, slack, stretch);
-    let line_w: f64 = adv.iter().sum();
+    let (kashida, mut filled) = justify_line(p, rl, &mut adv, align, slack, stretch);
+    // A justified line the composer set tighter than natural: its spaces shrink to fit.
+    if !is_last && g.wrap && props.composer == Some(Composer::Paragraph) && width + hyphen_w > avail + 0.01 {
+        filled |= shrink_spaces(line_cells, &mut adv, align, width + hyphen_w - avail);
+    }
+    let text_w: f64 = adv.iter().sum();
+    let line_w = text_w + hyphen_w;
     // The line box, in column coordinates: the start edge is the left one for LTR and the
     // right one (S = W - rIns) for RTL paragraphs.
     let (box_l, box_r) = if p.rtl { (env.mr, g.col_w - x0) } else { (x0, g.col_w - env.mr) };
-    let left = line_left(align, filled, p.rtl, (box_l, box_r), line_w, slack, n);
+    let left = line_left(align, filled, p.rtl, (box_l - hang_l, box_r + hang_r), line_w, slack, n);
     // Distance from the box's start edge to the text (bullets move with centred or
-    // end-aligned text).
-    let content_shift = if p.rtl { box_r - (left + line_w) } else { left - box_l };
+    // end-aligned text); protrusion does not move the bullet.
+    let content_shift = if p.rtl { box_r - (left + line_w) } else { left + hang_l - box_l };
     // Rules L1 + L2: this line's visual order.
     let chars: Vec<char> = line_cells.iter().map(|c| c.ch).collect();
     let raw_levels: Vec<u8> = line_cells.iter().map(|c| c.level).collect();
     let levels = bidi::line_levels(&chars, &raw_levels, u8::from(p.rtl));
     let order = bidi::visual_order(&levels);
-    let (edges, caret_x) = edges_and_carets(&order, &levels, &adv, left, p.rtl, line_w);
+    let (edges, caret_x) = edges_and_carets(&order, &levels, &adv, left, p.rtl, text_w);
     let bullet = if li == 0 { line_bullet(env, align, content_shift, baseline) } else { None };
     let boundary: Vec<bool> = line_cells.iter().map(|c| c.boundary).collect();
     PlacedLine {
@@ -558,7 +584,7 @@ fn place_line(env: &ParaEnv, pi: usize, rl: &RawLine, li: usize, is_last: bool, 
             extent: (left, left + line_w),
             start_offset: x0,
         },
-        place: LinePlace { order, kashida },
+        place: LinePlace { order, kashida, hyphen_w },
         bullet,
         content_w: width + x0 + env.mr,
     }
@@ -839,6 +865,45 @@ fn merge_decos(v: Vec<Deco>) -> Vec<Deco> {
 struct LinePlace {
     order: Vec<usize>,
     kashida: Vec<f64>,
+    /// Width of the automatic hyphen drawn after the line's text (0: none).
+    hyphen_w: f64,
+}
+
+/// Shrinks the spaces of a justified line by `over` points in all, each by at most a fifth of
+/// its width (the composer's limit), and says whether the line now fills its box.
+fn shrink_spaces(cells: &[Cell], adv: &mut [f64], align: Align, over: f64) -> bool {
+    if !matches!(align, Align::Justify | Align::JustLow | Align::Distributed | Align::ThaiDistributed) {
+        return false;
+    }
+    let room: f64 = cells.iter().zip(adv.iter()).filter(|(c, _)| c.ch == ' ').map(|(_, a)| a * 0.2).sum();
+    if room <= 0.0 || !over.is_finite() {
+        return false;
+    }
+    let f = (over / room).min(1.0);
+    for (c, a) in cells.iter().zip(adv.iter_mut()) {
+        if c.ch == ' ' {
+            *a -= *a * 0.2 * f;
+        }
+    }
+    true
+}
+
+/// Draws the automatic hyphen after a composed line's text, in the style of its last character.
+/// The hyphen maps to no character (`cells` empty), as a bullet does: copied text has no hyphen.
+fn emit_hyphen(out: &mut TextLayout, p: &ParaShaped, line: &LineInfo, place: &LinePlace) {
+    if place.hyphen_w <= 0.0 || line.end <= line.start {
+        return;
+    }
+    let ci = line.end - 1;
+    let Some(cell) = p.cells.get(ci) else { return };
+    let (Some(st), Some(face)) = (p.styles.get(cell.style), p.faces.get(cell.face)) else { return };
+    let base_y = line.baseline - st.baseline * st.size;
+    let size = if st.baseline != 0.0 { st.size * SUB_SUPER } else { st.size };
+    let x = line.extent.1 - place.hyphen_w;
+    let pos = CellPos { k: ci - line.start, ci, cx: x, cx1: line.extent.1, base_y, size };
+    let mut r = new_run(cell, st, face, line.para, &pos);
+    r.glyphs.push((face.glyph_for('-'), x, base_y));
+    out.runs.push(r);
 }
 
 /// Kashida opportunities on a line (indices from the line start), at most one per word (its last

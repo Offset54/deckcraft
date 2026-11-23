@@ -18,7 +18,27 @@ Nothing was ported. Every Phase 1 item was either already in the host or built h
 | Golden-image harness | DesignCraft's damage-region pixel tests; FigCraft's retained-render random walk | Built in the host | Both siblings compare renders inside their own renderer's tests against their own document model. The host needed whole-deck comparison against stored pictures: `deckcraft_render::golden` (compare with a channel and area tolerance, a diff picture, PNG decode) and `crates/engine/tests/it/golden.rs` |
 | `.pptx` round trip by pixels | — | Built in the host | `crates/engine/tests/it/pptx_roundtrip.rs`: each sample deck goes through `.pptx` and must still match its golden pictures; `DECKCRAFT_PPTX_CORPUS=<folder>` runs a loss report over decks kept outside the repository |
 
+## Phase 2: Typography (started 2026-11-23)
+
+The owner gave the go-ahead on 2026-11-23 without choosing between the shared crates and copies
+(recon §11 item 3); this phase uses the recommended default, the shared `craft-text`, which is
+also upstream's rule for `craft-libs`.
+
+| Item | Source considered | Decision | Why |
+|---|---|---|---|
+| Paragraph composer (Knuth–Plass) | DesignCraft `compose::breaker`; `craft-text::linebreak` | Depend on `craft-text` (`linebreak`, `hyphen`) at the rev the workspace already pins (`63196e6`); re-implement the item builder against the host's shaped cells (`crates/text/src/compose.rs`) | `compose` takes DesignCraft's `Document`/`Story` and cannot be lifted (recon §1 item 4). `craft-text` is the same breaker extracted with no document types: box/glue/penalty items, three elasticity tiers, rag, hyphenation zone, hanging edges, and a greedy fallback with bounded work. The host keeps its shaping, bidi and placement; only the choice of breaks changes |
+| Hyphenation | DesignCraft `compose::hyphen`; `craft-text::hyphen` | `craft-text`, US English only | Bundled public-domain dictionary plus CC0 patterns. The other languages' hypher patterns carry licences outside the allowlist, so no language feature is enabled; non-English runs (by `lang`) are not hyphenated |
+| Optical margin alignment | DesignCraft `compose::breaker::hang` | Copied the protrusion table; applied through `craft-text`'s `Item::hang` | Sibling Craft code (MIT OR Apache-2.0) may be copied (AGENTS.md §2). The table is standard protrusion amounts; the placement change is the host's |
+| Where the switch lives | — | Three optional `ParaProps` fields (`composer`, `hyphenate`, `opticalMargin`) that inherit through masters, layouts and placeholders like every other paragraph property | Unset means the single-line breaker, so every existing deck and every `.pptx` lays out exactly as before (tested). New decks can opt in per style level |
+| `.pptx` storage | — | An `a:pPr/a:extLst/a:ext` with SlideCraft's own URI and `sc:typography` | PowerPoint has no markup for these. Extensions with unknown URIs are kept and ignored, so SlideCraft round-trips them and PowerPoint breaks lines its own way. Saved text never changes: an automatic hyphen is drawn, not inserted |
+
 ## Attribution carried over
 
 None in Phase 1: no code or asset was copied from FigCraft, DesignCraft or `craft-libs`. The new
 sample deck, its picture and the golden pictures are contributor-original (`ATTRIBUTION.md`).
+
+Phase 2: the optical margin protrusion table in `crates/text/src/compose.rs` (`hang`) is copied
+from DesignCraft's `crates/compose/src/breaker.rs` at `d3190ef` (MIT OR Apache-2.0, Copyright (c)
+2026 ArtCraft Team and the DesignCraft contributors); `NOTICE` carries that line. The US English hyphenation
+dictionary and patterns come in through the `craft-text` dependency and are listed in
+`ATTRIBUTION.md` under "Bundled through dependencies".

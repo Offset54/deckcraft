@@ -120,6 +120,9 @@ pub(super) fn state(s: &mut Session, _p: &Value) -> Result<Value> {
         "numbering": matches!(pp.bullet, Some(Bullet::AutoNum { .. })),
         "lang": r.lang,
         "lineSpacing": serde_json::to_value(pp.line_spacing).unwrap_or_default(),
+        "composer": pp.composer.unwrap_or(deckcraft_model::text::Composer::SingleLine).as_str(),
+        "hyphenate": pp.hyphenate.unwrap_or(false),
+        "opticalMargin": pp.optical_margin.unwrap_or(false),
         "painter": s.painter.is_some(),
     }))
 }

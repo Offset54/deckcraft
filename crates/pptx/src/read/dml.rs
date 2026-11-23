@@ -7,8 +7,8 @@ use deckcraft_model::style::{
     LineJoin, PatternFill, PictureFill, PictureMode, Reflection, Shadow,
 };
 use deckcraft_model::text::{
-    Action, Align, Anchor, AutoFit, BodyProps, Bullet, Caps, Hyperlink, LevelStyle, ListStyle, ParaProps, Paragraph, Run, RunKind, RunProps, Spacing,
-    Strike, TabStop, TextBody, TextDir,
+    Action, Align, Anchor, AutoFit, BodyProps, Bullet, Caps, Composer, Hyperlink, LevelStyle, ListStyle, ParaProps, Paragraph, Run, RunKind,
+    RunProps, Spacing, Strike, TabStop, TextBody, TextDir,
 };
 
 use super::{Imp, Part};
@@ -438,6 +438,16 @@ fn spacing(e: &El) -> Option<Spacing> {
     e.child("spcPts").map(|p| Spacing::Pts(p.f64("val").unwrap_or(0.0).clamp(0.0, 1_000_000.0) / 100.0))
 }
 
+/// SlideCraft's paragraph typography (`a:extLst/a:ext/sc:typography`), written by
+/// `write::dml::typography_ext`. Unknown values are ignored.
+fn typography_ext(ext_lst: &El, pp: &mut ParaProps) {
+    let ours = ext_lst.children_named("ext").find(|x| x.attr("uri") == Some(crate::opc::EXT_SC_TYPOGRAPHY));
+    let Some(t) = ours.and_then(|x| x.child("typography")) else { return };
+    pp.composer = t.attr("composer").and_then(Composer::parse);
+    pp.hyphenate = t.bool("hyphenate");
+    pp.optical_margin = t.bool("opticalMargin");
+}
+
 /// `a:pPr` / `a:lvlNpPr` → (level, paragraph props, default run props).
 pub fn ppr(imp: &mut Imp, part: &Part, p: &El) -> (Option<u8>, ParaProps, Option<RunProps>) {
     let mut pp = ParaProps {
@@ -501,6 +511,7 @@ pub fn ppr(imp: &mut Imp, part: &Part, p: &El) -> (Option<u8>, ParaProps, Option
                 )
             }
             "defRPr" => def = Some(rpr(imp, part, e)),
+            "extLst" => typography_ext(e, &mut pp),
             _ => {}
         }
     }

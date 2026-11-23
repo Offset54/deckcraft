@@ -978,6 +978,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-text"
+version = "0.1.0"
+source = "git+https://github.com/storytold/craft-libs?rev=63196e66f3033a6623eb629af95a104d26986725#63196e66f3033a6623eb629af95a104d26986725"
+dependencies = [
+ "hypher",
+ "miniz_oxide 0.8.9",
+ "unicode-general-category",
+]
+
+[[package]]
 name = "craft-ui"
 version = "0.1.0"
 source = "git+https://github.com/storytold/craft-libs?rev=63196e66f3033a6623eb629af95a104d26986725#63196e66f3033a6623eb629af95a104d26986725"
@@ -1370,6 +1380,7 @@ name = "deckcraft-text"
 version = "0.19.0"
 dependencies = [
  "chrono",
+ "craft-text",
  "deckcraft-color",
  "deckcraft-fonts",
  "deckcraft-geom",
@@ -2389,6 +2400,12 @@ name = "httparse"
 version = "1.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
+
+[[package]]
+name = "hypher"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45f2b4f6b5da34d400d4c112eadcc14512cc5d04307a8eee182586d9bebd7ce6"
 
 [[package]]
 name = "i_float"

@@ -26,6 +26,11 @@ list (author, source, license) is in ATTRIBUTION.md.
   WenKai Lite 1.530 under OFL-1.1; its OFL text ships with release packages, and the exact font
   and licence files are retained in craft-fonts with the LXGW Reserved Font Names. That face is
   not in the web payload.
+- The optical margin protrusion table in crates/text/src/compose.rs is copied from DesignCraft
+  (crates/compose/src/breaker.rs, https://github.com/storytold/designcraft, commit d3190ef).
+  Copyright (c) 2026 ArtCraft Team and the DesignCraft contributors. MIT OR Apache-2.0.
+- The US English hyphenation data in the craft-text dependency (craft-libs): the Moby Hyphenator
+  II word list by Grady Ward (public domain) and patterns trained from it (CC0-1.0).
 - Lucide icon paths embedded in crates/engine/src/icon_data.rs (Insert › Icons), release 1.56.0,
   commit 440a1e1dfb1e712505308da46bead3c28b1f1398, https://github.com/lucide-icons/lucide.
   ISC License, Copyright (c) 2026 Lucide Icons and Contributors. Icons Lucide derives from Feather

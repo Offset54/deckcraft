@@ -36,6 +36,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 mod autonum;
 mod breaking;
+mod compose;
 mod layout;
 mod run;
 mod shape;
@@ -550,5 +551,7 @@ pub fn fit_width(ctx: &Ctx, shape: &Shape, body: &TextBody, rect: Rect, fields: 
     w + bp.inset_l.unwrap_or(7.2) + bp.inset_r.unwrap_or(7.2) + 1.0
 }
 
+#[cfg(test)]
+mod compose_tests;
 #[cfg(test)]
 mod tests;

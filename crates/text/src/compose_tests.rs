@@ -1,0 +1,206 @@
+//! The paragraph composer ([`crate::compose`]) as seen through [`crate::layout`].
+
+use deckcraft_geom::Rect;
+use deckcraft_model::defaults;
+use deckcraft_model::resolve::Ctx;
+use deckcraft_model::text::{Align, Bullet, Composer, Paragraph, TextBody};
+use deckcraft_model::{LayoutType, Presentation, Shape, Xfrm};
+
+use crate::{NoFields, Opts, TextLayout, layout};
+
+const TEXT: &str = "Slides are read from across a room, so every line should be easy to take in at a glance. \
+Even spacing and fewer short lines make a paragraph look calm and deliberate.";
+
+fn deck(paras: &[&str], w: f64) -> (Presentation, Shape) {
+    let mut p = Presentation::default();
+    let lay = defaults::layout_of_kind(&p, LayoutType::TitleAndContent).expect("layout");
+    let mut s = defaults::new_slide(&mut p, lay).expect("slide");
+    let mut body = s.shapes.remove(1);
+    body.xfrm = Some(Xfrm::new(0.0, 0.0, w, 2000.0));
+    let mut tb = TextBody::from_text(&paras.join("\n"));
+    for para in &mut tb.paragraphs {
+        para.props.bullet = Some(Bullet::None);
+        para.props.margin_left = Some(0.0);
+        para.props.indent = Some(0.0);
+        for r in &mut para.runs {
+            r.props.size = Some(20.0);
+        }
+    }
+    body.text = Some(tb);
+    s.shapes = vec![body.clone()];
+    p.slides = vec![std::sync::Arc::new(s)];
+    (p, body)
+}
+
+fn set(sh: &mut Shape, f: impl Fn(&mut Paragraph)) {
+    if let Some(tb) = sh.text.as_mut() {
+        tb.paragraphs.iter_mut().for_each(f);
+    }
+}
+
+fn lay(p: &Presentation, sh: &Shape, w: f64) -> TextLayout {
+    let ctx = Ctx::for_slide(p, &p.slides[0]).expect("ctx");
+    layout(
+        &ctx,
+        sh,
+        sh.text.as_ref().expect("text"),
+        &Opts { rect: Rect::new(0.0, 0.0, w, 2000.0), fields: &NoFields, prompt_color: None, no_shrink: false },
+    )
+}
+
+/// Usable line width: the box less the default insets.
+fn measure(w: f64) -> f64 {
+    w - 2.0 * 7.2
+}
+
+/// Sum of squared leftover space over every line but each paragraph's last.
+fn raggedness(l: &TextLayout, w: f64) -> f64 {
+    let m = measure(w);
+    let mut sum = 0.0;
+    for (i, li) in l.lines.iter().enumerate() {
+        let last_of_para = l.lines.get(i + 1).is_none_or(|n| n.para != li.para);
+        if !last_of_para {
+            let used = li.extent.1 - li.extent.0;
+            sum += (m - used).powi(2);
+        }
+    }
+    sum
+}
+
+/// Every character of the text is drawn by exactly one glyph cell or is a space/line end; the
+/// drawn characters, in order, are the text without spaces.
+fn drawn_text(l: &TextLayout) -> String {
+    let mut cells: Vec<(usize, usize, char)> = l.runs.iter().flat_map(|r| r.cells.iter().map(move |c| (r.para, c.0, c.1))).collect();
+    cells.sort_unstable();
+    cells.dedup();
+    cells.into_iter().map(|c| c.2).filter(|c| !c.is_whitespace()).collect()
+}
+
+fn hyphens_drawn(l: &TextLayout) -> usize {
+    l.runs.iter().filter(|r| r.cells.is_empty() && r.glyphs.len() == 1 && r.glyphs[0].0 == r.face.glyph_for('-')).count()
+}
+
+#[test]
+fn an_unset_composer_lays_out_exactly_like_the_single_line_composer() {
+    let (p, sh) = deck(&[TEXT], 300.0);
+    let mut single = sh.clone();
+    set(&mut single, |para| para.props.composer = Some(Composer::SingleLine));
+    let (a, b) = (lay(&p, &sh, 300.0), lay(&p, &single, 300.0));
+    let spans = |l: &TextLayout| l.lines.iter().map(|x| (x.start, x.end, x.extent.0.to_bits(), x.extent.1.to_bits())).collect::<Vec<_>>();
+    assert_eq!(spans(&a), spans(&b), "PowerPoint decks keep their line breaks unless the composer is chosen");
+}
+
+#[test]
+fn the_paragraph_composer_evens_out_ragged_lines() {
+    let mut better = 0;
+    for w in [220.0, 260.0, 300.0, 340.0, 380.0] {
+        let (p, mut sh) = deck(&[TEXT], w);
+        let greedy = lay(&p, &sh, w);
+        set(&mut sh, |para| para.props.composer = Some(Composer::Paragraph));
+        let composed = lay(&p, &sh, w);
+        assert_eq!(drawn_text(&composed), drawn_text(&greedy), "the composer keeps every character, in order");
+        for li in &composed.lines {
+            assert!(li.extent.1 <= w - 7.2 + 0.5, "a ragged line stays inside the box at {w}: {:?}", li.extent);
+        }
+        let (g, c) = (raggedness(&greedy, w), raggedness(&composed, w));
+        assert!(c <= g + 1e-6, "total fit is never more ragged than first fit at {w}: {c} > {g}");
+        if c < g - 1.0 {
+            better += 1;
+        }
+    }
+    assert!(better > 0, "at some width the composer finds a more even break than first fit");
+}
+
+#[test]
+fn composed_justified_lines_fill_the_measure() {
+    let w = 300.0;
+    let (p, mut sh) = deck(&[TEXT], w);
+    set(&mut sh, |para| {
+        para.props.composer = Some(Composer::Paragraph);
+        para.props.align = Some(Align::Justify);
+    });
+    let l = lay(&p, &sh, w);
+    assert!(l.lines.len() >= 3);
+    for li in &l.lines[..l.lines.len() - 1] {
+        let used = li.extent.1 - li.extent.0;
+        assert!((used - measure(w)).abs() < 0.5, "justified line fills the measure: {used} vs {}", measure(w));
+    }
+    let last = l.lines.last().expect("a last line");
+    assert!(last.extent.1 - last.extent.0 < measure(w), "the last line is not stretched");
+}
+
+#[test]
+fn hyphenation_adds_drawn_hyphens_but_no_text() {
+    let w = 170.0;
+    let words = "Internationalization considerations complicate straightforward communication.";
+    let (p, mut sh) = deck(&[words], w);
+    set(&mut sh, |para| para.props.composer = Some(Composer::Paragraph));
+    let plain = lay(&p, &sh, w);
+    assert_eq!(hyphens_drawn(&plain), 0, "no hyphenation unless it is turned on");
+    set(&mut sh, |para| para.props.hyphenate = Some(true));
+    let hyph = lay(&p, &sh, w);
+    assert!(hyphens_drawn(&hyph) > 0, "long words are hyphenated at line ends");
+    assert_eq!(drawn_text(&hyph), drawn_text(&plain), "a hyphen is drawn, not inserted into the text");
+    for li in &hyph.lines {
+        assert!(li.extent.1 <= w - 7.2 + 0.5, "the hyphen fits inside the box: {:?}", li.extent);
+    }
+    // Hyphenation needs the paragraph composer: the single-line composer ignores it.
+    set(&mut sh, |para| para.props.composer = None);
+    assert_eq!(hyphens_drawn(&lay(&p, &sh, w)), 0);
+}
+
+#[test]
+fn optical_margins_hang_opening_quotes_into_the_margin() {
+    let w = 400.0;
+    let (p, mut sh) = deck(&["\u{201C}Quoted words open this paragraph.\u{201D}"], w);
+    set(&mut sh, |para| para.props.composer = Some(Composer::Paragraph));
+    let flush = lay(&p, &sh, w);
+    set(&mut sh, |para| para.props.optical_margin = Some(true));
+    let hung = lay(&p, &sh, w);
+    let (a, b) = (flush.lines[0].extent.0, hung.lines[0].extent.0);
+    assert!(b < a - 1.0, "the opening quote hangs left of the text edge: {b} vs {a}");
+}
+
+#[test]
+fn paragraphs_with_tabs_keep_the_single_line_composer() {
+    let w = 260.0;
+    let (p, mut sh) = deck(&["Name\tValue and a long description that has to wrap onto another line"], w);
+    let single = lay(&p, &sh, w);
+    set(&mut sh, |para| para.props.composer = Some(Composer::Paragraph));
+    let composed = lay(&p, &sh, w);
+    let spans = |l: &TextLayout| l.lines.iter().map(|x| (x.start, x.end)).collect::<Vec<_>>();
+    assert_eq!(spans(&single), spans(&composed));
+}
+
+#[test]
+fn hostile_paragraphs_compose_without_losing_text() {
+    let long = "x".repeat(400);
+    let cases = ["", "     ", "\u{b}\u{b}", "a\u{b}", long.as_str(), "word \u{AD}\u{AD}\u{AD} \u{b} end", "\u{201C}\u{201C}\u{201C}"];
+    for case in cases {
+        let (p, mut sh) = deck(&[case], 60.0);
+        let single = lay(&p, &sh, 60.0);
+        set(&mut sh, |para| {
+            para.props.composer = Some(Composer::Paragraph);
+            para.props.hyphenate = Some(true);
+            para.props.optical_margin = Some(true);
+            para.props.align = Some(Align::Justify);
+        });
+        let composed = lay(&p, &sh, 60.0);
+        assert_eq!(drawn_text(&composed), drawn_text(&single), "{case:?}");
+        assert!(!composed.lines.is_empty(), "{case:?}");
+        for li in &composed.lines {
+            assert!(li.start <= li.end, "{case:?}");
+            assert!(li.extent.0.is_finite() && li.extent.1.is_finite(), "{case:?}");
+        }
+    }
+}
+
+#[test]
+fn a_trailing_line_break_opens_an_empty_last_line_in_both_composers() {
+    let (p, mut sh) = deck(&["Two lines\u{b}"], 400.0);
+    let single = lay(&p, &sh, 400.0);
+    set(&mut sh, |para| para.props.composer = Some(Composer::Paragraph));
+    let composed = lay(&p, &sh, 400.0);
+    let spans = |l: &TextLayout| l.lines.iter().map(|x| (x.start, x.end)).collect::<Vec<_>>();
+    assert_eq!(spans(&single), spans(&composed));
+}

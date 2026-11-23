@@ -2532,3 +2532,34 @@ fn a_pictures_context_menu_starts_crop_mode() {
     let s = &harness.state().session;
     assert_eq!(s.tool.cropping(s.doc().unwrap()).map(|c| serde_json::json!(c.0)), Some(id), "crop mode on the picture");
 }
+
+/// Home › Paragraph › Line Spacing holds the typography switches; hyphenation and optical
+/// margins wait for the paragraph composer.
+#[test]
+fn line_spacing_menu_turns_on_the_paragraph_composer() {
+    use egui_kittest::kittest::{NodeT, Queryable};
+    let _gpu = crate::gpu_lock::gpu_lock();
+    let mut harness = canvas_harness();
+    harness
+        .state_mut()
+        .session
+        .execute(
+            "shape.insert",
+            &json!({"preset": "rect", "rect": [100.0, 100.0, 400.0, 200.0], "text": "Even spacing for every line of a paragraph"}),
+        )
+        .unwrap();
+    harness.run_steps(2);
+    harness.get_by_label("Line Spacing").click();
+    harness.run_steps(2);
+    if let (Ok(dir), Ok(img)) = (std::env::var("SLIDECRAFT_UI_SHOTS"), harness.render()) {
+        let _ = img.save(std::path::Path::new(&dir).join("typography-menu.png"));
+    }
+    let hyphenate = harness.get_by_label("Hyphenate");
+    assert!(hyphenate.accesskit_node().is_disabled(), "hyphenation needs the paragraph composer");
+    harness.get_by_label("Paragraph Composer").click();
+    harness.run_steps(2);
+    let st = harness.state().session.active().unwrap();
+    let para = st.selected_shapes().first().and_then(|sh| sh.text.as_ref()).and_then(|t| t.paragraphs.first()).map(|p| p.props.clone()).unwrap();
+    assert_eq!(para.composer, Some(deckcraft_model::text::Composer::Paragraph));
+    assert_eq!(st.history.undo.last().map(|h| h.label.as_str()), Some("Typography"));
+}

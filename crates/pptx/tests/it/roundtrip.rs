@@ -1117,6 +1117,31 @@ fn line_break_options_round_trip() {
 }
 
 #[test]
+fn slidecraft_typography_round_trips_in_a_paragraph_extension() {
+    use deckcraft_model::text::Composer;
+    let mut p = defaults::new_presentation(None);
+    let first = p.slides[0].id;
+    let s = p.slide_mut(first).expect("slide");
+    let t = s.shapes[0].text.insert(TextBody::from_text("composed\nsingle\nplain"));
+    t.paragraphs[0].props.composer = Some(Composer::Paragraph);
+    t.paragraphs[0].props.hyphenate = Some(true);
+    t.paragraphs[0].props.optical_margin = Some(false);
+    t.paragraphs[1].props.composer = Some(Composer::SingleLine);
+    let bytes = deckcraft_pptx::export(&p).expect("export");
+    let mut z = zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("zip");
+    let mut xml = String::new();
+    std::io::Read::read_to_string(&mut z.by_name("ppt/slides/slide1.xml").expect("slide"), &mut xml).expect("xml");
+    // The extension is the last child of a:pPr, as the schema orders it.
+    let ext = xml.find("<a:extLst><a:ext uri=\"{60126004-4CC5-4FBA-82AA-1248CB7A995C}\">").expect("extension written");
+    let close = xml[ext..].find("</a:pPr>").expect("inside a:pPr");
+    assert!(xml[ext..ext + close].ends_with("</a:extLst>"), "extLst ends a:pPr: {}", &xml[ext..ext + close]);
+    let q = round(&p);
+    let paras = &q.slides[0].shapes[0].text.as_ref().expect("text").paragraphs;
+    let got: Vec<_> = paras.iter().map(|x| (x.props.composer, x.props.hyphenate, x.props.optical_margin)).collect();
+    assert_eq!(got, vec![(Some(Composer::Paragraph), Some(true), Some(false)), (Some(Composer::SingleLine), None, None), (None, None, None)]);
+}
+
+#[test]
 fn a_table_fill_round_trips() {
     let mut p = defaults::new_presentation(None);
     let mut t = Table::new(2, 2, 200.0, 40.0);
