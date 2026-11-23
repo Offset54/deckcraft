@@ -1,6 +1,6 @@
 # SlideCraft: handoff
 
-Status on 2026-11-23 (Phase 2 done; waiting for the owner's Phase 3 go-ahead). Start here if you know nothing about this project.
+Status on 2026-11-23: Phase 2 done; Phase 3 under way in its own session (`claude/phase-3-canvas`); upstream merge deferred until 2026-12-14. Start here if you know nothing about this project.
 
 ## Goal
 
@@ -28,6 +28,16 @@ Made:
   - phases continue on `claude/new-session-lm99ab`
 - **Base moved onto upstream DeckCraft v0.19.0** before Phase 1 (merge `86be392`, no conflicts;
   [`recon.md`](recon.md) §11 item 2).
+- **Upstream merge deferred until 2026-12-14** ([`decisions/004-upstream-merge-deferred.md`](decisions/004-upstream-merge-deferred.md)):
+  upstream now delegates `.pptx` to `craft-pptx`, which can't yet keep Phase 2's paragraph,
+  run, table and shape-level extensions.
+  - The owner posts [`upstream/craft-pptx-extension-slots.md`](upstream/craft-pptx-extension-slots.md)
+    to `storytold/craft-libs`.
+  - If the slots haven't landed by **2026-12-14**, follow
+    [`upstream/craft-libs-fork-plan.md`](upstream/craft-libs-fork-plan.md): fork to
+    `Offset54/craft-libs` (the owner creates the repository), patch, point the five PPTX-family
+    crates at the fork, merge upstream.
+  - Either way, new `.pptx` work follows Phase 2's extension pattern until then.
 - **Real-world test decks** live in the separate public repo
   [Offset54/slidecraft-pptx-corpus](https://github.com/Offset54/slidecraft-pptx-corpus), not here
   ([`pptx-corpus/`](pptx-corpus/manifest.md)).
@@ -54,7 +64,8 @@ Open (for the owner; context in [`recon.md`](recon.md) §11 and
 | 0: reconnaissance | Done | [`reports/phase-0.md`](reports/phase-0.md), [`recon.md`](recon.md), [`fork-patches.md`](fork-patches.md) |
 | 1: foundations | Done: golden images, `.pptx` round trip by pixels, command audit, undo bench | [`reports/phase-1.md`](reports/phase-1.md), [`command-audit.md`](command-audit.md), [`porting-log.md`](porting-log.md) |
 | 2: typography | Done: paragraph composer, hyphenation, optical margins, styles, baseline grid, threaded text, text wrap, table column formats | [`reports/phase-2.md`](reports/phase-2.md) |
-| 3–8 | Not started | The brief, §4 |
+| 3: canvas and layout | **In progress** in session `session_01XQuQYo1QjpcCMPq58cF1k8`, branch `claude/phase-3-canvas` (started 2026-11-23) | |
+| 4–8 | Not started | The brief, §4 |
 
 ## `.pptx` corpus
 
@@ -88,6 +99,6 @@ Open (for the owner; context in [`recon.md`](recon.md) §11 and
    - On Linux, install `libasound2-dev` and `mesa-vulkan-drivers`, and add the Rust target
      `wasm32-unknown-unknown` ([`recon.md`](recon.md) §12).
    - Run `CARGO_INCREMENTAL=0 cargo xtask ci`. With incremental builds, `target/` reaches 28 GB.
-3. Ask the owner for the Phase 3 go-ahead and for the open decisions above (and those in
-   [`reports/phase-2.md`](reports/phase-2.md) §5). Do not start Phase 3 without that go-ahead.
+3. Phase 3 has the owner's go-ahead and runs in its own session. Check the dates in decision
+   004 (2026-12-14) and the open decisions above.
 4. For corpus work, follow [`pptx-corpus/HANDOFF.md`](pptx-corpus/HANDOFF.md).
