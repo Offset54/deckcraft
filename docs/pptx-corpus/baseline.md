@@ -1,7 +1,109 @@
 # `.pptx` round-trip corpus: baseline
 
-What SlideCraft loses on the ten decks in [`manifest.md`](manifest.md), measured on 2026-11-19 at
-code commit `efe1de7` (branch `claude/new-session-lm99ab`; this branch adds only documentation).
+Status on 2026-11-23: **all ten decks pass** on branch `claude/pptx-corpus-losses`, with the test
+made stricter ([Results after the fixes](#results-after-the-fixes-2026-11-23)). The original
+baseline follows that section unchanged, except where a later finding is marked.
+
+## Results after the fixes (2026-11-23)
+
+Measured on branch `claude/pptx-corpus-losses`, on Linux x86-64 with rustc 1.97.0 and
+`CRAFT_FONTS_DIR` set to a `craft-fonts` checkout. Not run on Windows. The baseline was reproduced
+first, at `61fff99`, the tip of `claude/new-session-lm99ab` (code unchanged since `efe1de7`): the
+same five decks failed with the same losses and the same pixel percentages.
+
+### What the test checks now
+
+`an_external_corpus_survives_a_pptx_round_trip` (`crates/engine/tests/it/pptx_roundtrip.rs`):
+
+- It prints each deck's name **before** opening it, and the time it took after.
+- **First open.** It counts animation effects in the package XML: every `p:cTn` with a
+  `presetClass`, by shape id and `p:txEl` paragraph, slide by slide in `p:sldIdLst` order. It
+  checks that count against what the slide-show timeline plays after the first open. A
+  by-paragraph build counts once per paragraph it plays, including sub-paragraphs with text that
+  play with their parent. A shortfall is a loss, and the missing targets are named.
+- **Save and reopen.** For each slide it compares **what the slide show plays**, effect by
+  effect, instead of the animation count. Each effect is compared by target shape (by its place
+  in the shape tree) and paragraph, sequence (main or trigger), click step, start, span, repeats,
+  and class, effect and option. It also compares slide size, section names and sizes, layouts per
+  master and embedded font names. Text, shape count, notes, transition kind and pixels are
+  compared as before.
+- Losses from either stage fail the test.
+
+Still not compared: hyperlink targets, chart data, SmartArt data, equation content and media
+parts (only through pixels). Pixel results still depend on the fonts the machine has (gap 5
+below).
+
+### Result
+
+| Deck | Baseline | Now |
+|---|---|---|
+| 01 | slide 89: 23 animations became 21 | 0 losses |
+| 02 | pixels on 10 slides | 0 losses |
+| 03 | 0 | 0 |
+| 04 | 0 | 0 |
+| 05 | pixels on slides 3, 10 | 0 losses |
+| 06 | pixels on 8 slides | 0 losses |
+| 07 | 0 | 0 |
+| 08 | 0 | 0 |
+| 09 | 0 | 0 |
+| 10 | pixels on 23 slides | 0 losses |
+
+The test passes (`1 passed`, 21 s for the ten decks). No deck reports a first-open loss.
+
+### What the losses were
+
+1. **`p:txEl` paragraph effects: the reader folds them; it does not drop them.**
+   - **Decks 02 (slide 10) and 10 (slide 7):** the reader folds the paragraph effects into one
+     by-paragraph build. The timeline plays that build exactly as the file does, so the first
+     open loses nothing. Deck 02's slide 10 has 5 effects in the file: shape 10's paragraphs 0
+     and 3 play on click, and paragraphs 1 and 2 are sub-paragraphs that play with paragraph 0.
+     Deck 10's slide 7 has 9 effects, one click per non-empty paragraph. The baseline's "40 → 37"
+     and "144 → 136" compared effects in the file with animations in the Animation Pane, and the
+     pane lists a build once.
+   - **Deck 01 slide 89 was a real timing loss.** Shape 4567 has three separate 200 ms Fade
+     effects, one per paragraph, each After Previous. The first open keeps all three. The writer
+     marks them `bldP build="p"`, and on reopening the reader folds them into one build (21
+     animations). The timeline then played a build that is not on click with its paragraphs a
+     fixed 0.5 s apart, so paragraph 2 started at 0.95 s instead of 0.65 s. But the file, and
+     the writer, chain each paragraph after the one before it ends. **Fix** (`crates/anim`): later
+     paragraphs of a With/After Previous build now start after the previous one ends. This is
+     unchanged for 500 ms effects with no delay.
+2. **SmartArt text moved to the top (decks 05 and 02).** In the model, text on a shape with no
+   anchor sits in the middle. The `p:sp` writer spells that out as `anchor="ctr"`. The SmartArt
+   drawing writer (`dsp:sp`) did not, so on reopening the text read as top-anchored. **Fix:** the
+   drawing writer writes the anchor the same way.
+3. **Text narrower after a save (decks 10 and 02).** A deck without a `p:defaultTextStyle`
+   (LibreOffice writes none) reads back with an empty style. The writer filled in DeckCraft's
+   defaults, whose kerning changed every line of text on reopening. **Fix:** the element is
+   written only when the deck has one. It is optional in the schema, and new presentations
+   always have one.
+4. **Outlines appeared (deck 06).** Its themes have line styles with no fill
+   (`<a:ln w="9525"><a:prstDash val="solid"/></a:ln>`), which SlideCraft draws as no line. The
+   theme writer filled them with `phClr`, so shapes whose style points at them gained an outline.
+   **Fix:** a line style without a fill is written without one.
+
+Each fix has a regression test on a deck built in code. Each test fails without its fix:
+
+- `crates/anim/src/tests.rs`: `an_after_previous_paragraph_build_chains_its_paragraphs`
+- `crates/engine/tests/it/pptx_roundtrip.rs`:
+  `separate_after_previous_paragraph_effects_play_the_same_after_a_pptx_round_trip`
+- `crates/pptx/tests/it/smartart.rs`: `smartart_text_stays_centred_after_a_save`
+- `crates/pptx/tests/it/roundtrip.rs`: `no_default_text_style_stays_none` and
+  `a_theme_line_style_without_a_fill_keeps_none`
+
+### Open questions these fixes leave
+
+- **Fill-less theme line styles.** SlideCraft draws them as no line, and the fix keeps the file
+  as it was. Whether PowerPoint draws them the same way has not been checked. If it draws a
+  line, the renderer is wrong, not the round trip.
+- **The chained build.** By-paragraph builds that are not on click now play like the `.pptx` they
+  save to. Whether PowerPoint's slide show chains them the same way has not been observed here.
+  Its files store them that way.
+
+## Baseline (2026-11-19)
+
+Measured on 2026-11-19 at code commit `efe1de7` (branch `claude/new-session-lm99ab`). The
+documentation-only branch `claude/pptx-corpus-manifest` recorded it.
 Run on Linux x86-64 with rustc 1.97.0 and `CRAFT_FONTS_DIR` pointing at a `craft-fonts`
 checkout. I have not run it on Windows.
 
@@ -11,7 +113,7 @@ DECKCRAFT_PPTX_CORPUS=<decks> CARGO_INCREMENTAL=0 cargo test -p deckcraft-engine
 target/release/deckcraft-cli info <deck>     # for each deck
 ```
 
-## Summary
+### Summary
 
 - **No crash and no hang.** All ten decks opened in `deckcraft-cli info` (0.04–0.23 s each),
   and the round-trip test finished in 35 s.
@@ -21,7 +123,7 @@ target/release/deckcraft-cli info <deck>     # for each deck
   before any save, which the test cannot see (see [Test design](#test-design-described-not-fixed)).
 - No deck reported a damaged part on open.
 
-## Round trip (the test as it stands)
+### Round trip (the test as it stood)
 
 The test opens each deck, saves it as `.pptx`, opens that again, and compares the two
 SlideCraft models slide by slide: text, shape count, notes text, animation count, transition
@@ -47,7 +149,7 @@ Slide 89 of deck 01 has 23 effects: 22 entrances and one emphasis. Six of them a
 paragraphs (`p:txEl`). The first open keeps all 23; the re-save loses two. Deck 02 slide 10 and deck 10 slide 7 have the same
 pattern on first open (next section).
 
-## First open (not measured by the test)
+### First open (not measured by the test then)
 
 Here the package contents (counted from the XML) are compared with what `deckcraft-cli info`
 reports SlideCraft loaded:
@@ -71,6 +173,9 @@ paragraph effects. SlideCraft may fold paragraph effects into one "by paragraph"
 case the count is not a loss of behaviour. Or it may drop them. I have not established which.
 Whoever picks this up should compare the click sequence in the slide show.
 
+*Later finding (2026-11-23):* it folds them, and the build plays what the file plays. See
+[What the losses were](#what-the-losses-were), item 1.
+
 Notes on how this was measured, so the numbers are not misread:
 
 - Decks 05, 09 and 10 have a `<p:transition>` on every slide with no effect child (`<p:transition/>`,
@@ -85,10 +190,11 @@ Notes on how this was measured, so the numbers are not misread:
   table cannot say whether those survive the first open. Only the pixel comparison in the test
   covers them, and only across the re-save.
 
-## Test design (described, not fixed)
+### Test design (described, not fixed)
 
-These are gaps in `an_external_corpus_survives_a_pptx_round_trip` as it stands. The brief says to
-describe them here and not change code.
+These were the gaps in `an_external_corpus_survives_a_pptx_round_trip` at `efe1de7`. On
+2026-11-23, gaps 1, 3 and 4 were fixed, and gap 2 was fixed for sections, layouts, slide size and
+embedded fonts. See [What the test checks now](#what-the-test-checks-now). Gap 5 is open.
 
 1. **It compares SlideCraft with itself.** `losses(&doc, &reopened, …)` compares the deck after
    SlideCraft's first import with the deck after export and reimport. Anything dropped or changed
