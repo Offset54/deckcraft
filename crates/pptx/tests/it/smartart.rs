@@ -165,3 +165,33 @@ fn smartart_text_follows_tx_xfrm() {
     let q = deckcraft_pptx::import(&deckcraft_pptx::export(&p).expect("export")).expect("re-import");
     check(&q, &expected);
 }
+
+/// Text of a SmartArt drawing shape centred with `anchor="ctr"` stays centred after a save: the
+/// drawing part is written with the anchor spelt out, as `p:sp` is, since a `dsp:sp` without one
+/// reads back at the top (corpus deck 05, slides 3 and 10).
+#[test]
+fn smartart_text_stays_centred_after_a_save() {
+    let mut files = entries(&smartart_deck(&[drawing_shape("rect", (0.0, 0.0, 0.0, 200.0, 100.0), (0.0, 0.0, 0.0, 200.0, 100.0), "Middle")]));
+    // One node under the document point, so that the frame reads as a diagram with an outline.
+    replace(
+        &mut files,
+        "ppt/diagrams/data1.xml",
+        "<dgm:ptLst/>",
+        r#"<dgm:ptLst><dgm:pt modelId="0" type="doc"/><dgm:pt modelId="1"><dgm:t><a:p><a:r><a:t>Middle</a:t></a:r></a:p></dgm:t></dgm:pt></dgm:ptLst><dgm:cxnLst><dgm:cxn modelId="2" srcId="0" destId="1" srcOrd="0" destOrd="0"/></dgm:cxnLst>"#,
+    );
+    let deck = zip_of(&files);
+    let anchors = |p: &Presentation| {
+        let mut v = vec![];
+        deckcraft_model::walk(&p.slides[0].shapes, &mut |s, _| {
+            if s.text.as_ref().is_some_and(|t| t.text() == "Middle") {
+                v.push(s.text.as_ref().and_then(|t| t.body.anchor));
+            }
+        });
+        v
+    };
+    let first = deckcraft_pptx::import(&deck).expect("import");
+    assert!(first.slides[0].shapes.iter().any(|s| s.diagram.is_some()), "read as SmartArt");
+    assert_eq!(anchors(&first), vec![None], "centred is the model's default");
+    let again = deckcraft_pptx::import(&deckcraft_pptx::export(&first).expect("export")).expect("reimport");
+    assert_eq!(anchors(&again), vec![None], "still centred after a save");
+}
