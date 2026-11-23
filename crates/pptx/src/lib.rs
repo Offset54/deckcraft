@@ -92,12 +92,26 @@ pub fn export(p: &Presentation) -> Result<Vec<u8>, PptxError> {
 /// Write a package for `ext`: `potx` (template) and `ppsx` (slide show) differ from `pptx` only in
 /// the main part's content type.
 pub fn export_as(p: &Presentation, ext: &str) -> Result<Vec<u8>, PptxError> {
+    export_as_with(p, ext, &ExportOptions::default())
+}
+
+/// What a caller that has laid the deck out tells the writer.
+#[derive(Clone, Debug, Default)]
+pub struct ExportOptions {
+    /// Threaded text boxes (`Shape::thread_next`) whose first paragraph goes on from the
+    /// previous box's last one: the caller flowed the threads (`deckcraft_render::thread::flow`)
+    /// and cut inside a paragraph there. The reader joins those paragraphs back.
+    pub thread_joined: std::collections::HashSet<deckcraft_model::ShapeId>,
+}
+
+/// [`export_as`] with [`ExportOptions`].
+pub fn export_as_with(p: &Presentation, ext: &str, opts: &ExportOptions) -> Result<Vec<u8>, PptxError> {
     let ct = match ext {
         "potx" => write::CT_TEMPLATE,
         "ppsx" => write::CT_SHOW,
         _ => write::CT_PRES,
     };
-    write::export(p, ct)
+    write::export_with(p, ct, opts)
 }
 
 /// Content type for a file name's extension.

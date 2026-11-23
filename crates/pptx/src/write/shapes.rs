@@ -137,7 +137,9 @@ fn cnvpr(w: &mut W, x: &mut Exp, o: &mut Out, id: u32, s: &Shape) {
         .o("descr", (!s.descr.is_empty()).then_some(s.descr.as_str()))
         .t("hidden", s.hidden)
         .o("title", (!s.title.is_empty()).then_some(s.title.as_str()));
-    if s.click.is_none() && s.hover.is_none() && !s.decorative {
+    let thread = (x.thread_next.get(&s.id).copied(), x.thread_joined.contains(&s.id));
+    let threaded = thread.0.is_some() || thread.1;
+    if s.click.is_none() && s.hover.is_none() && !s.decorative && !threaded {
         w.empty("p:cNvPr", a);
         return;
     }
@@ -148,11 +150,20 @@ fn cnvpr(w: &mut W, x: &mut Exp, o: &mut Out, id: u32, s: &Shape) {
     if let Some(h) = &s.hover {
         dml::hyperlink(w, x, o, "a:hlinkHover", h);
     }
-    if s.decorative {
+    if s.decorative || threaded {
         w.open0("a:extLst");
-        w.open("a:ext", A::new().a("uri", "{C183D7F6-B498-43B3-948B-1728B52AA6E4}"));
-        w.empty("adec:decorative", A::new().a("xmlns:adec", "http://schemas.microsoft.com/office/drawing/2017/decorative").a("val", "1"));
-        w.close("a:ext");
+        if s.decorative {
+            w.open("a:ext", A::new().a("uri", "{C183D7F6-B498-43B3-948B-1728B52AA6E4}"));
+            w.empty("adec:decorative", A::new().a("xmlns:adec", "http://schemas.microsoft.com/office/drawing/2017/decorative").a("val", "1"));
+            w.close("a:ext");
+        }
+        // SlideCraft's threaded text: the box the text goes on in, and whether this box's first
+        // paragraph goes on from the previous box's.
+        if threaded {
+            w.open("a:ext", A::new().a("uri", crate::opc::EXT_SC_THREAD));
+            w.empty("sc:thread", A::new().a("xmlns:sc", crate::opc::NS_SC).o("next", thread.0).t("joined", thread.1));
+            w.close("a:ext");
+        }
         w.close("a:extLst");
     }
     w.close("p:cNvPr");

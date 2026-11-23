@@ -19,6 +19,12 @@ pub(super) fn edit(s: &mut Session, p: &Value) -> Result<Value> {
         Some(i) => i,
         None => s.doc()?.selection.shapes.first().copied().ok_or_else(|| bad("text.edit", "select a shape with text"))?,
     };
+    // A box that threaded text flows into is edited in the thread's first box, which holds the
+    // text (`deckcraft_render::thread`).
+    let (id, redirected) = match thread_head(s, id) {
+        Some(head) if head != id => (head, true),
+        _ => (id, false),
+    };
     let sh = shape_of(s, id)?;
     let cell = p.get("cell").and_then(Value::as_array).and_then(|a| Some((a.first()?.as_u64()? as usize, a.get(1)?.as_u64()? as usize)));
     let body = match (&sh.kind, cell) {
@@ -27,7 +33,8 @@ pub(super) fn edit(s: &mut Session, p: &Value) -> Result<Value> {
         (ShapeKind::Shape | ShapeKind::Connector { .. }, _) => sh.text.clone().unwrap_or_default(),
         _ => return Err(bad("text.edit", "this object doesn't hold text")),
     };
-    let at = pos_param(p, "at").unwrap_or_else(|| ed::end(&body));
+    // A position given for the box clicked means nothing in the first box: start at the end.
+    let at = if redirected { ed::end(&body) } else { pos_param(p, "at").unwrap_or_else(|| ed::end(&body)) };
     // A shape without a text body gets one on first edit.
     if sh.text.is_none() && cell.is_none() {
         s.edit(|doc, sel| {
@@ -193,6 +200,15 @@ pub(crate) fn insert_field(s: &mut Session, field: &str, text: &str) -> Result<V
         t.caret = c;
     })?;
     ok()
+}
+
+/// The first box of the text thread `id` is in on the current slide, if it is in one.
+fn thread_head(s: &Session, id: deckcraft_model::ShapeId) -> Option<deckcraft_model::ShapeId> {
+    let slide = s.doc().ok()?.current_slide()?;
+    deckcraft_render::thread::chains(&slide.shapes)
+        .into_iter()
+        .find(|c| c.iter().any(|&i| slide.shapes.get(i).is_some_and(|x| x.id == id)))
+        .and_then(|c| c.first().and_then(|&i| slide.shapes.get(i)).map(|x| x.id))
 }
 
 #[cfg(test)]

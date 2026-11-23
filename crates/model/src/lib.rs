@@ -364,6 +364,11 @@ pub struct Shape {
     /// On a SmartArt group: the diagram's text outline, from which its shapes are regenerated.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diagram: Option<Diagram>,
+    /// Threaded text (SlideCraft): the box on the same slide that the text this box cannot hold
+    /// continues in. The first box of a thread holds the whole text; the others show what flows
+    /// into them (`deckcraft_render::thread`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thread_next: Option<ShapeId>,
 }
 
 /// A SmartArt diagram's data: its layout and its outline of nodes (the Text Pane).
@@ -439,6 +444,7 @@ impl Default for Shape {
             tags: vec![],
             raw_ext: None,
             diagram: None,
+            thread_next: None,
         }
     }
 }

@@ -1471,6 +1471,7 @@ fn read_slide(imp: &mut Imp, part: &Part, doc: &Doc, id: SlideId, layout: Layout
         s.background = background(imp, part, csld);
         if let Some(tree) = csld.child("spTree") {
             s.shapes = shapes::sp_tree(imp, part, &mut ctx, tree, 0);
+            shapes::merge_threads(&mut s.shapes, &ctx.joined);
         }
         if let Some(c) = csld.child("controls") {
             let pics = shapes::controls(imp, part, &mut ctx, c);

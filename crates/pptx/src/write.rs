@@ -68,6 +68,10 @@ pub struct Exp<'a> {
     /// The ids in `table_styles`, for checking membership without a scan.
     pub table_style_set: std::collections::HashSet<String>,
     placeholder: Option<String>,
+    /// Threaded text on the slide being written: each linked box's next box, as a file shape id.
+    pub thread_next: HashMap<deckcraft_model::ShapeId, u32>,
+    /// Boxes whose first paragraph goes on from the previous box's ([`crate::ExportOptions`]).
+    pub thread_joined: std::collections::HashSet<deckcraft_model::ShapeId>,
 }
 
 /// A part being written: its name and relationships.
@@ -281,6 +285,7 @@ fn csld(w: &mut W, x: &mut Exp, o: &mut Out, name: &str, bg: Option<&Background>
     w.open0("p:spTree");
     shapes::tree_header(w);
     let mut ids = shapes::IdMap::build(list);
+    x.thread_next = list.iter().filter_map(|s| s.thread_next.and_then(|n| ids.get(n)).map(|f| (s.id, f))).collect();
     {
         let mut cx = shapes::Ctx { ids: &mut ids, written: Default::default() };
         shapes::shapes(w, x, o, &mut cx, list, 0);
@@ -548,6 +553,10 @@ fn sanitized(p: &Presentation) -> std::borrow::Cow<'_, Presentation> {
 }
 
 pub fn export(p: &Presentation, main_ct: &str) -> Result<Vec<u8>, PptxError> {
+    export_with(p, main_ct, &crate::ExportOptions::default())
+}
+
+pub fn export_with(p: &Presentation, main_ct: &str, opts: &crate::ExportOptions) -> Result<Vec<u8>, PptxError> {
     let p = sanitized(p);
     // SlideCraft text styles are written out as direct formatting (PowerPoint has none); the
     // style ids ride in extensions and the reader takes the formatting back out.
@@ -575,6 +584,8 @@ pub fn export(p: &Presentation, main_ct: &str) -> Result<Vec<u8>, PptxError> {
         table_styles: vec![],
         table_style_set: Default::default(),
         placeholder: None,
+        thread_next: HashMap::new(),
+        thread_joined: opts.thread_joined.clone(),
     };
     for (i, s) in p.slides.iter().enumerate() {
         x.slide_parts.insert(s.id, format!("ppt/slides/slide{}.xml", i + 1));

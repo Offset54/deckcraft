@@ -2613,3 +2613,34 @@ fn the_baseline_grid_menu_sets_the_masters_grid() {
     let grid = st.doc.masters[0].baseline_grid.and_then(|g| g.active());
     assert_eq!(grid.map(|g| g.0), Some(24.0));
 }
+
+/// Shape Format › Link Text Boxes links two selected boxes; the slide then shows the thread.
+#[test]
+fn the_link_menu_threads_two_selected_boxes() {
+    let _gpu = crate::gpu_lock::gpu_lock();
+    let mut harness = egui_kittest::Harness::builder().with_size(egui::vec2(1800.0, 900.0)).build_ui_state(
+        |ui, app: &mut SlideApp| {
+            app.logic(ui.ctx());
+            app.ui(ui);
+        },
+        SlideApp::new(Session::with_new(), Services::default()),
+    );
+    let story = "Text that one small box cannot hold goes on in the next box, so a passage can run across two columns. ".repeat(3);
+    let s = &mut harness.state_mut().session;
+    s.execute("slide.new", &json!({"layout": "blank"})).unwrap();
+    let a = s.execute("shape.insert", &json!({"preset": "rect", "rect": [60.0, 60.0, 380.0, 150.0], "text": story})).unwrap()["id"].as_u64().unwrap();
+    let b = s.execute("shape.insert", &json!({"preset": "rect", "rect": [500.0, 60.0, 380.0, 400.0]})).unwrap()["id"].as_u64().unwrap();
+    s.execute("edit.select", &json!({"ids": [a, b]})).unwrap();
+    harness.state_mut().ui.tab = "Shape Format".into();
+    harness.run_steps(3);
+    harness.get_by_label("Link Text Boxes").click();
+    harness.run_steps(2);
+    harness.get_by_label("Link Selected Boxes").click();
+    harness.run_steps(3);
+    let st = harness.state().session.active().unwrap();
+    let first = st.current_slide().and_then(|sl| sl.shapes.iter().find(|x| u64::from(x.id.0) == a)).cloned().unwrap();
+    assert_eq!(first.thread_next.map(|x| u64::from(x.0)), Some(b));
+    if let (Ok(dir), Ok(img)) = (std::env::var("SLIDECRAFT_UI_SHOTS"), harness.render()) {
+        let _ = img.save(std::path::Path::new(&dir).join("thread.png"));
+    }
+}

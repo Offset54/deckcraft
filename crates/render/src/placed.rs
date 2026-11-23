@@ -75,7 +75,8 @@ pub fn place_slide_with(pres: &Presentation, index: usize, opts: &crate::RenderO
             place(&mut out, &lctx, &fields, s, Affine::IDENTITY, 0, None, false);
         }
     }
-    for s in &slide.shapes {
+    let flowed = crate::thread::flow_slide(&rctx, slide, None);
+    for s in &flowed.as_ref().unwrap_or(slide).shapes {
         place(&mut out, &rctx, &fields, s, Affine::IDENTITY, 0, None, true);
     }
     out

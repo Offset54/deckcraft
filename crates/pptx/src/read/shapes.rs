@@ -27,6 +27,9 @@ pub struct IdCtx {
     /// Always allocate new ids (shapes pulled in from other parts).
     pub fresh: bool,
     pub count: usize,
+    /// Threaded text boxes whose first paragraph goes on from the previous box's
+    /// (`sc:thread/@joined`), for [`merge_threads`].
+    pub joined: HashSet<ShapeId>,
 }
 
 impl IdCtx {
@@ -109,6 +112,7 @@ fn remap_connectors(shapes: &mut [Shape], ctx: &IdCtx, depth: usize) {
         return;
     }
     for s in shapes.iter_mut() {
+        s.thread_next = s.thread_next.and_then(|id| ctx.lookup(id.0));
         match &mut s.kind {
             ShapeKind::Connector { start, end } => {
                 for e in [start, end] {
@@ -117,6 +121,43 @@ fn remap_connectors(shapes: &mut [Shape], ctx: &IdCtx, depth: usize) {
             }
             ShapeKind::Group { children, .. } => remap_connectors(children, ctx, depth + 1),
             _ => {}
+        }
+    }
+}
+
+/// Threaded text written by SlideCraft lands split across its boxes (each holds what it showed);
+/// this gives the whole text back to each thread's first box, joining paragraphs that were cut,
+/// so the thread flows anew. Links to missing boxes, loops and threads longer than 16 boxes stop.
+pub fn merge_threads(shapes: &mut [Shape], joined: &HashSet<ShapeId>) {
+    let at: HashMap<ShapeId, usize> = shapes.iter().enumerate().map(|(i, s)| (s.id, i)).collect();
+    let targets: HashSet<ShapeId> = shapes.iter().filter_map(|s| s.thread_next).collect();
+    let heads: Vec<usize> = shapes.iter().enumerate().filter(|(_, s)| s.thread_next.is_some() && !targets.contains(&s.id)).map(|(i, _)| i).collect();
+    let mut seen: HashSet<usize> = HashSet::new();
+    for h in heads {
+        seen.insert(h);
+        let mut story = shapes.get(h).and_then(|s| s.text.clone()).unwrap_or_default();
+        let mut next = shapes.get(h).and_then(|s| s.thread_next);
+        let mut frames = 1;
+        while let Some(id) = next {
+            let Some(&j) = at.get(&id) else { break };
+            if frames >= 16 || !seen.insert(j) {
+                break;
+            }
+            frames += 1;
+            let Some(frame) = shapes.get_mut(j) else { break };
+            let paras = frame.text.as_mut().map(|t| std::mem::take(&mut t.paragraphs)).unwrap_or_default();
+            let mut paras = paras.into_iter();
+            if joined.contains(&frame.id)
+                && let (Some(last), Some(first)) = (story.paragraphs.last_mut(), paras.next())
+            {
+                last.runs.extend(first.runs);
+                last.end_props = first.end_props;
+            }
+            story.paragraphs.extend(paras);
+            next = frame.thread_next;
+        }
+        if let Some(head) = shapes.get_mut(h) {
+            head.text = Some(story);
         }
     }
 }
@@ -145,6 +186,17 @@ fn base(imp: &mut Imp, part: &Part, ctx: &mut IdCtx, nv: Option<&El>) -> Shape {
         s.click = c.child("hlinkClick").and_then(|h| dml::hyperlink(imp, part, h));
         s.hover = c.child("hlinkHover").and_then(|h| dml::hyperlink(imp, part, h));
         s.decorative = c.find("decorative").and_then(|d| d.bool("val")).unwrap_or(false);
+        // SlideCraft's threaded text; `next` is a file id until `remap_connectors`.
+        if let Some(t) = c
+            .child("extLst")
+            .and_then(|l| l.children_named("ext").find(|e| e.attr("uri") == Some(crate::opc::EXT_SC_THREAD)))
+            .and_then(|e| e.child("thread"))
+        {
+            s.thread_next = t.u32("next").map(ShapeId);
+            if t.bool("joined") == Some(true) {
+                ctx.joined.insert(s.id);
+            }
+        }
     }
     if let Some(nv) = nv {
         for e in nv.elements() {

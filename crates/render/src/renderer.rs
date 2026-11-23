@@ -174,7 +174,9 @@ impl Renderer {
         let f = Frame { pres, opts, fields: Self::fields(pres, index, opts) };
         if let Some(rctx) = Ctx::for_slide(pres, slide) {
             self.backdrop(&mut ctx, &f, &rctx, slide, view);
-            for s in &slide.shapes {
+            // Threaded text: each box draws the part of its thread that falls in it.
+            let flowed = crate::thread::flow_slide(&rctx, slide, opts.editing_text);
+            for s in &flowed.as_ref().unwrap_or(slide).shapes {
                 self.shape(&mut ctx, &f, &rctx, s, view, 0);
             }
         }
@@ -195,7 +197,8 @@ impl Renderer {
                     // Shapes filled with the background (`useBgFill`) still show it.
                     let (fill, ph) = resolve::background(&rctx, Some(slide));
                     self.bg = Some((fill, ph, view));
-                    for s in &slide.shapes {
+                    let flowed = crate::thread::flow_slide(&rctx, slide, opts.editing_text);
+                    for s in &flowed.as_ref().unwrap_or(slide).shapes {
                         self.shape(&mut ctx, &f, &rctx, s, view, 0);
                     }
                 }

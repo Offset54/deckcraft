@@ -347,10 +347,32 @@ fn report_damage(s: &mut Session, damaged: &Damage) -> Result<()> {
     Ok(())
 }
 
+/// The deck with every slide's threaded text flowed into its boxes (`None` when there is none),
+/// and the boxes whose first paragraph goes on from the previous box's.
+fn flow_threads(doc: &Presentation) -> (Option<Presentation>, std::collections::HashSet<deckcraft_model::ShapeId>) {
+    let mut joined = std::collections::HashSet::new();
+    let mut out: Option<Presentation> = None;
+    for (i, slide) in doc.slides.iter().enumerate() {
+        let Some(ctx) = deckcraft_model::resolve::Ctx::for_slide(doc, slide) else { continue };
+        let Some(f) = deckcraft_render::thread::flow(&ctx, slide, None) else { continue };
+        joined.extend(f.joined);
+        let deck = out.get_or_insert_with(|| doc.clone());
+        if let Some(s) = deck.slides.get_mut(i) {
+            *s = std::sync::Arc::new(f.slide);
+        }
+    }
+    (out, joined)
+}
+
 /// Encode the presentation in `format` (`deckcraft`, `pptx`, `potx`, `ppsx`, `outline`, `pdf`, `gif`).
 pub fn save_bytes(doc: &Presentation, format: &str) -> Result<Vec<u8>> {
     match format {
-        f @ ("pptx" | "potx" | "ppsx") => deckcraft_pptx::export_as(doc, f).map_err(|e| EngineError::Other(e.to_string())),
+        f @ ("pptx" | "potx" | "ppsx") => {
+            // Threaded text is written as each box shows it (PowerPoint has no threads).
+            let (flowed, thread_joined) = flow_threads(doc);
+            let doc = flowed.as_ref().unwrap_or(doc);
+            deckcraft_pptx::export_as_with(doc, f, &deckcraft_pptx::ExportOptions { thread_joined }).map_err(|e| EngineError::Other(e.to_string()))
+        }
         "outline" | "txt" => Ok(deckcraft_format::slides_to_outline(doc).into_bytes()),
         "rtf" => Ok(deckcraft_format::rtf::slides_to_rtf(doc).into_bytes()),
         "pdf" => deckcraft_pdf::export(doc, &Default::default()).map_err(|e| EngineError::Other(e.to_string())),

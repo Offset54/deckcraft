@@ -1,8 +1,8 @@
 use super::arrange::{arrange_group, size_group};
 use super::galleries::{cref_param, effects_menu, outline_menu, quick_styles, shapes_gallery};
 use super::{
-    Color32, CornerRadius, Icon, Rect, Sense, SlideApp, Stroke, Tokens, Ui, big, big_button, enabled, group, json, pos2, rows, run, scheme,
-    small_button, small_button_ex, theme, vec2, widgets,
+    Color32, CornerRadius, Icon, Rect, Sense, SlideApp, Stroke, Tokens, Ui, big, big_button, enabled, group, icon_toggle, json, pos2, rows, run,
+    scheme, small_button, small_button_ex, theme, vec2, widgets,
 };
 
 // ---------- contextual tabs ----------
@@ -205,14 +205,17 @@ pub(super) fn shape_format(app: &mut SlideApp, ui: &mut Ui) {
                     }
                 });
             }
-            let r = small_button(ui, Icon::TextEffects, "Text Effects", sel, false);
-            egui::Popup::menu(&r).width(312.0).show(|ui| {
-                if ui.button("Shadow").clicked() {
-                    run(app, "format.textShadow", json!({}));
-                    ui.close();
-                }
-                ui.separator();
-                transform_gallery(app, ui);
+            ui.horizontal(|ui| {
+                let r = small_button(ui, Icon::TextEffects, "Text Effects", sel, false);
+                egui::Popup::menu(&r).width(312.0).show(|ui| {
+                    if ui.button("Shadow").clicked() {
+                        run(app, "format.textShadow", json!({}));
+                        ui.close();
+                    }
+                    ui.separator();
+                    transform_gallery(app, ui);
+                });
+                thread_menu(app, ui);
             });
         });
     });
@@ -264,6 +267,32 @@ fn smooth_corners_row(app: &mut SlideApp, ui: &mut egui::Ui) {
         // One undo step per adjustment: apply when the drag ends (or on a click / keyboard step).
         if resp.drag_stopped() || (resp.changed() && !resp.dragged()) {
             run(app, "shape.smoothCorners", json!({"smoothing": state.1, "radius": state.0}));
+        }
+    });
+}
+
+/// Threaded text (`text.threadTo`, `text.unthread`): link two selected boxes so text the first
+/// cannot hold continues in the second, or end a thread after the selected box.
+fn thread_menu(app: &mut SlideApp, ui: &mut Ui) {
+    let (two, linked) = app
+        .session
+        .active()
+        .map(|d| {
+            let sel = d.selected_shapes();
+            (sel.len() == 2, sel.len() == 1 && sel.first().is_some_and(|s| s.thread_next.is_some()))
+        })
+        .unwrap_or((false, false));
+    let r = icon_toggle(ui, Icon::Link, "Link Text Boxes", two || linked, linked);
+    egui::Popup::menu(&r).show(|ui| {
+        if ui
+            .add_enabled(two, egui::Button::new("Link Selected Boxes"))
+            .on_hover_text("Text the first box cannot hold continues in the second")
+            .clicked()
+        {
+            run(app, "text.threadTo", json!({}));
+        }
+        if ui.add_enabled(linked, egui::Button::new("Unlink From Next Box")).clicked() {
+            run(app, "text.unthread", json!({}));
         }
     });
 }

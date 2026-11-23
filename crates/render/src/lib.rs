@@ -30,6 +30,7 @@ mod placed;
 mod radar;
 mod ramp;
 mod table;
+pub mod thread;
 mod transition;
 mod warp;
 
