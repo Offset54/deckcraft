@@ -132,7 +132,8 @@ can't be measured in this container, and variable mode switching is Phase 4.
 3. **Composer by default.** Today the paragraph composer is used only where a deck or style asks
    for it. The built-in Body, Caption and Quote styles do; new decks' masters don't. Should new
    decks default to it? Recommended: yes for body placeholders in new decks; never for imported
-   `.pptx`.
+   `.pptx`. *Decided 2026-11-23: yes. New decks' master body levels use it; imported masters are
+   untouched; paragraphs with East Asian hanging punctuation keep the single-line breaker.*
 4. **The corpus branch.** Its session finished the fixes, pushed them, and is waiting for you on
    two things: whether to add coverage decks to the corpus repo, and whether to squash its red
    commit `3d08904` into `f9e73f1`. After that, merge `claude/pptx-corpus-losses` here (one small

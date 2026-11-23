@@ -29,7 +29,18 @@ fn deck(paras: &[&str], w: f64) -> (Presentation, Shape) {
     body.text = Some(tb);
     s.shapes = vec![body.clone()];
     p.slides = vec![std::sync::Arc::new(s)];
+    without_master_composer(&mut p);
     (p, body)
+}
+
+/// New decks set body text with the paragraph composer; these tests are about layout as an
+/// imported (PowerPoint) master gives it, which names no composer.
+fn without_master_composer(p: &mut Presentation) {
+    for m in &mut p.masters {
+        for l in std::sync::Arc::make_mut(m).body_style.levels.iter_mut().flatten() {
+            l.para.composer = None;
+        }
+    }
 }
 
 fn set(sh: &mut Shape, f: impl Fn(&mut Paragraph)) {
@@ -296,4 +307,38 @@ fn wrap_follows_where_anchoring_puts_the_lines() {
     assert!(beside.iter().all(|li| li.extent.1 <= 300.5), "lines beside the shape stop before it");
     let above = l.lines.iter().filter(|li| li.bottom <= 190.0).map(|li| li.extent.1).fold(0.0, f64::max);
     assert!(above > 320.0, "lines above the shape use the full width: {above}");
+}
+
+#[test]
+fn a_new_decks_body_text_uses_the_paragraph_composer_and_an_imported_one_does_not() {
+    let mut p = Presentation::default();
+    let lay = defaults::layout_of_kind(&p, LayoutType::TitleAndContent).expect("layout");
+    let s = defaults::new_slide(&mut p, lay).expect("slide");
+    let body = s.shapes.get(1).cloned().expect("body placeholder");
+    p.slides = vec![std::sync::Arc::new(s)];
+    let ctx = Ctx::for_slide(&p, &p.slides[0]).expect("ctx");
+    let para = deckcraft_model::text::Paragraph::default();
+    assert_eq!(deckcraft_model::resolve::para(&ctx, &body, &para).composer, Some(Composer::Paragraph));
+    without_master_composer(&mut p);
+    let ctx = Ctx::for_slide(&p, &p.slides[0]).expect("ctx");
+    assert_eq!(deckcraft_model::resolve::para(&ctx, &body, &para).composer, None, "a master without it leaves the single-line breaker");
+}
+
+#[test]
+fn hanging_punctuation_keeps_the_single_line_breaker_under_the_composer() {
+    // The case `tests::closing_punctuation_hangs_past_the_end_with_hanging_punct` pins: with
+    // hangingPunct, "。" hangs past the edge instead of taking "す" to the next line.
+    let text =
+        "\u{767d}\u{306a}\u{3057}\u{3067}\u{7d9a}\u{304d}\u{307e}\u{3059}\u{3002}\u{53e5}\u{8aad}\u{70b9}\u{3082}\u{542b}\u{3081}\u{3066}\u{3002}";
+    let (p, mut probe) = deck(&["\u{767d}\u{306a}\u{3057}\u{3067}\u{7d9a}\u{304d}\u{307e}\u{3059}"], 4000.0);
+    set(&mut probe, |para| para.props.composer = Some(Composer::SingleLine));
+    let one = lay(&p, &probe, 4000.0).lines[0].extent;
+    let w = (one.1 - one.0) + 2.0 * 7.2 + 0.5;
+    let (p, mut sh) = deck(&[text], w);
+    set(&mut sh, |para| {
+        para.props.hanging_punct = Some(true);
+        para.props.composer = Some(Composer::Paragraph);
+    });
+    let l = lay(&p, &sh, w);
+    assert_eq!((l.lines[0].start, l.lines[0].end), (0, 9), "the first line keeps its closing \u{3002}");
 }
