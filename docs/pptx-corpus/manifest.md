@@ -2,9 +2,13 @@
 
 Ten openly licensed, real-world PowerPoint decks for the external-corpus round-trip test
 (`crates/engine/tests/it/pptx_roundtrip.rs`, `an_external_corpus_survives_a_pptx_round_trip`).
-The decks are third-party files and are **not** in this repository (`AGENTS.md` §1.1). They are
-fetched into a private folder with [`fetch.ps1`](fetch.ps1), which checks each file's SHA-256
-against [`manifest.json`](manifest.json). The loss report as it stands today is
+The decks are third-party files and are **not** in this repository (`AGENTS.md` §1.1). They live
+in the separate corpus repo
+[Offset54/slidecraft-pptx-corpus](https://github.com/Offset54/slidecraft-pptx-corpus) (pinned at
+commit `eb77646`, with per-deck attribution and the CC-BY-4.0 licence text). They are fetched into
+a private folder with [`fetch.ps1`](fetch.ps1). The script downloads each deck from that repo and
+falls back to the Zenodo direct URL, then checks each file's SHA-256 against
+[`manifest.json`](manifest.json). The loss report as it stands today is
 [`baseline.md`](baseline.md).
 
 Selected 2026-11-19. Every deck comes from Zenodo and is licensed CC-BY-4.0, which allows

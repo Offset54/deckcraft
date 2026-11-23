@@ -2,6 +2,12 @@
   "about": "SlideCraft .pptx round-trip corpus. Third-party decks; never commit them to Offset54/deckcraft (AGENTS.md 1.1).",
   "selected": "2026-11-19",
   "test": "crates/engine/tests/it/pptx_roundtrip.rs: an_external_corpus_survives_a_pptx_round_trip",
+  "corpus_repo": {
+    "url": "https://github.com/Offset54/slidecraft-pptx-corpus",
+    "commit": "eb77646a292cb78b88075c1a2121b92a13979a5e",
+    "raw_base": "https://raw.githubusercontent.com/Offset54/slidecraft-pptx-corpus/eb77646a292cb78b88075c1a2121b92a13979a5e/decks/",
+    "note": "Main source. Each deck is at raw_base + file. direct_url (Zenodo) is the fallback."
+  },
   "decks": [
     {
       "file": "01-premis-tutorial-137-slides.pptx",

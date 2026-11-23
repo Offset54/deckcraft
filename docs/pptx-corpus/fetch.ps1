@@ -4,7 +4,9 @@
 
 .DESCRIPTION
     Reads manifest.json (next to this script), downloads every deck to -Destination, and checks
-    each file's SHA-256 against the manifest. A file that fails the check is deleted, never kept.
+    each file's SHA-256 against the manifest. Each deck comes from the corpus repo
+    Offset54/slidecraft-pptx-corpus at the commit pinned in manifest.json (corpus_repo), or from
+    its Zenodo direct_url if that fails. A file that fails the check is deleted, never kept.
     Prints which decks failed. Nothing downloaded is opened or run: the files are only written
     and hashed. The decks are third-party files; keep them out of the repository (AGENTS.md 1.1).
 
@@ -50,22 +52,37 @@ foreach ($deck in $manifest.decks) {
         }
     }
     $tmp = "$file.part"
-    try {
-        Invoke-WebRequest -Uri $deck.direct_url -OutFile $tmp -UseBasicParsing -MaximumRedirection 5 -TimeoutSec 600
-        $have = (Get-FileHash -LiteralPath $tmp -Algorithm SHA256).Hash.ToLowerInvariant()
-        $size = (Get-Item -LiteralPath $tmp).Length
-        if ($have -ne $want) {
-            Remove-Item -LiteralPath $tmp -Force
-            $failed += "$($deck.file): SHA-256 mismatch (got $have, $size bytes; want $want, $($deck.bytes) bytes)"
-            continue
-        }
-        Move-Item -LiteralPath $tmp -Destination $file -Force
-        Write-Host "ok                  $($deck.file)"
-        $ok++
+    # The corpus repo (pinned commit) is the main source; Zenodo is the fallback.
+    $sources = @()
+    if ($manifest.PSObject.Properties.Name -contains 'corpus_repo') {
+        $sources += @{ Name = 'corpus repo'; Url = $manifest.corpus_repo.raw_base + $deck.file }
     }
-    catch {
-        if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force }
-        $failed += "$($deck.file): download failed: $($_.Exception.Message)"
+    $sources += @{ Name = 'Zenodo'; Url = $deck.direct_url }
+    $errors = @()
+    $done = $false
+    foreach ($src in $sources) {
+        try {
+            Invoke-WebRequest -Uri $src.Url -OutFile $tmp -UseBasicParsing -MaximumRedirection 5 -TimeoutSec 600
+            $have = (Get-FileHash -LiteralPath $tmp -Algorithm SHA256).Hash.ToLowerInvariant()
+            $size = (Get-Item -LiteralPath $tmp).Length
+            if ($have -ne $want) {
+                Remove-Item -LiteralPath $tmp -Force
+                $errors += "$($src.Name): SHA-256 mismatch (got $have, $size bytes; want $want, $($deck.bytes) bytes)"
+                continue
+            }
+            Move-Item -LiteralPath $tmp -Destination $file -Force
+            Write-Host ("ok ({0}){1}{2}" -f $src.Name, (' ' * [Math]::Max(1, 16 - $src.Name.Length)), $deck.file)
+            $ok++
+            $done = $true
+            break
+        }
+        catch {
+            if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force }
+            $errors += "$($src.Name): download failed: $($_.Exception.Message)"
+        }
+    }
+    if (-not $done) {
+        $failed += "$($deck.file): " + ($errors -join '; ')
     }
 }
 
