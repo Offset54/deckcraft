@@ -38,8 +38,8 @@ Open (for the owner; context in [`recon.md`](recon.md) §11 and
    `craft-libs`, or copy the code from DesignCraft and FigCraft. Recommended: use the shared
    crates. *Phase 2 went ahead on 2026-11-23 with the recommendation (`craft-text`); the owner did
    not answer this question explicitly.*
-2. **Document tree.** Keep the nested shape tree and add optional fields, or move to a flat node
-   map. Recommended: keep the tree. This needs a decision record before Phase 3.
+2. **Document tree.** *Decided 2026-11-23: keep the nested tree
+   ([`decisions/002-document-tree.md`](decisions/002-document-tree.md)).*
 3. **Collaboration.** Keep it as a stretch goal or drop it.
 4. **Branches and merging.** Where each phase's branch merges, and whether this fork's workflow
    may change.
