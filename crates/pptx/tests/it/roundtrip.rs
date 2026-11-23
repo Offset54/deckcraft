@@ -2363,3 +2363,22 @@ fn no_default_text_style_stays_none() {
     let back = deckcraft_pptx::import(&deckcraft_pptx::export(&p).unwrap()).unwrap();
     assert_eq!(back.default_text_style, p.default_text_style);
 }
+
+/// A theme line style without a fill draws no outline, and keeps none after a save: the writer
+/// used to fill it with the placeholder colour, so every shape whose style points at it gained an
+/// outline on reopening (corpus deck 06, slides 5, 6, 14, 44, 45, 47, 49 and 55).
+#[test]
+fn a_theme_line_style_without_a_fill_keeps_none() {
+    let mut p = deckcraft_model::defaults::new_presentation(None);
+    let m = Arc::make_mut(&mut p.masters[0]);
+    for l in &mut m.theme.format.lines {
+        l.fill = None;
+    }
+    let back = deckcraft_pptx::import(&deckcraft_pptx::export(&p).unwrap()).unwrap();
+    let fills: Vec<_> = back.masters[0].theme.format.lines.iter().map(|l| l.fill.clone()).collect();
+    assert_eq!(fills, vec![None, None, None]);
+    // Filled ones still keep their fill.
+    let p = deckcraft_model::defaults::new_presentation(None);
+    let back = deckcraft_pptx::import(&deckcraft_pptx::export(&p).unwrap()).unwrap();
+    assert!(back.masters[0].theme.format.lines.iter().all(|l| l.fill.is_some()));
+}

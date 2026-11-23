@@ -63,10 +63,9 @@ pub fn theme_xml(x: &mut Exp, o: &mut Out, t: &Theme) -> Vec<u8> {
         lines.push(d.lines.get(lines.len()).cloned().unwrap_or_default());
     }
     for l in &lines {
+        // A line style without a fill (as some themes have, `<a:ln w="9525"><a:prstDash/></a:ln>`)
+        // stays without one: a filled one would draw outlines the deck didn't have.
         let mut l = l.clone();
-        if l.fill.is_none() {
-            l.fill = Some(Fill::solid(ColorRef::scheme(SchemeSlot::PhClr)));
-        }
         if let Some(fl) = &l.fill {
             l.fill = Some(style_fill(fl));
         }
