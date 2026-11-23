@@ -1237,6 +1237,17 @@ fn baseline_grids_and_snapping_round_trip_without_piling_up() {
 }
 
 #[test]
+fn text_wrap_round_trips() {
+    let mut p = defaults::new_presentation(None);
+    let first = p.slides[0].id;
+    let s = p.slide_mut(first).expect("slide");
+    s.shapes[0].text_wrap = Some(deckcraft_model::TextWrap { margin: 9.5 });
+    let q = round(&round(&p));
+    assert_eq!(q.slides[0].shapes[0].text_wrap, Some(deckcraft_model::TextWrap { margin: 9.5 }));
+    assert_eq!(q.slides[0].shapes.get(1).and_then(|x| x.text_wrap), None);
+}
+
+#[test]
 fn a_table_fill_round_trips() {
     let mut p = defaults::new_presentation(None);
     let mut t = Table::new(2, 2, 200.0, 40.0);

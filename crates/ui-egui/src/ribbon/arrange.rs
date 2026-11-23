@@ -119,6 +119,28 @@ pub(super) fn arrange_group(app: &mut SlideApp, ui: &mut Ui) {
                     menu_item(app, ui, Icon::FlipH, "Flip Horizontal", "arrange.flipHorizontal", json!({}));
                 });
             }
+            // Text wrap (`arrange.textWrap`): text in other boxes flows around the selection.
+            let wrapped = app.session.active().and_then(|d| d.selected_shapes().first().and_then(|s| s.text_wrap)).map(|w| w.margin());
+            // "Wrap", not "Wrap Text": no wider than "Rotate", so the group keeps its width.
+            let (main, arrow) = small_button_ex(ui, Icon::TextBox, "Wrap", sel, wrapped.is_some(), true);
+            let main = main.on_hover_text("Wrap Text: text in other boxes flows around this shape");
+            if main.clicked() {
+                let p = if wrapped.is_some() { json!({"mode": "none"}) } else { json!({"mode": "around"}) };
+                run(app, "arrange.textWrap", p);
+            }
+            if let Some(arrow) = arrow {
+                egui::Popup::menu(&arrow).show(|ui| {
+                    if ui.selectable_label(wrapped.is_none(), "No Wrap").clicked() {
+                        run(app, "arrange.textWrap", json!({"mode": "none"}));
+                    }
+                    for m in [4.0, 8.0, 16.0, 24.0] {
+                        let on = wrapped.is_some_and(|w| (w - m).abs() < 1e-6);
+                        if ui.selectable_label(on, format!("Wrap Around, {m:.0} pt Gap")).clicked() {
+                            run(app, "arrange.textWrap", json!({"mode": "around", "margin": m}));
+                        }
+                    }
+                });
+            }
         });
     });
 }

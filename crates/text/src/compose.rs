@@ -223,7 +223,7 @@ pub(crate) fn compose_lines(p: &ParaShaped, params: &BreakParams, o: ComposeOpts
     let hyph = if o.hyphenate { hyphenation_points(p) } else { Vec::new() };
     let (mut items, mut at) = items_of(p, o, &allowed, &hyph, &[]);
     // Words no line can hold get emergency breaks at their cluster boundaries.
-    let narrow = params.first_w.min(params.rest_w);
+    let narrow = params.first_w.min(params.rest_w) - params.cuts.iter().map(|c| c.1).fold(0.0, f64::max);
     let long = linebreak::overlong(&items, narrow);
     if !long.is_empty() {
         let mut emergency = vec![false; n];
@@ -238,8 +238,9 @@ pub(crate) fn compose_lines(p: &ParaShaped, params: &BreakParams, o: ComposeOpts
         }
         (items, at) = items_of(p, o, &allowed, &hyph, &emergency);
     }
-    let width = |k: usize| if k == 0 { params.first_w } else { params.rest_w };
-    let kp = Params { hyphen_limit: HYPHEN_LIMIT, uniform_from: 1, rag: (!o.justify).then(Rag::default), ..Params::default() };
+    let cut = |k: usize| params.cuts.get(k).map_or(0.0, |c| c.1);
+    let width = |k: usize| ((if k == 0 { params.first_w } else { params.rest_w }) - cut(k)).max(1.0);
+    let kp = Params { hyphen_limit: HYPHEN_LIMIT, uniform_from: params.cuts.len().max(1), rag: (!o.justify).then(Rag::default), ..Params::default() };
     let breaks = linebreak::break_paragraph(&items, &width, &kp, &TOLERANCES);
     let cell_at = |k: usize| at.get(k).copied().unwrap_or(n);
     let mut lines = Vec::with_capacity(breaks.lines.len());

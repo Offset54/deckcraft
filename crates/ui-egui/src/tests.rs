@@ -2644,3 +2644,34 @@ fn the_link_menu_threads_two_selected_boxes() {
         let _ = img.save(std::path::Path::new(&dir).join("thread.png"));
     }
 }
+
+/// Shape Format › Arrange › Wrap Text sets the selected shape's wrap; other text flows around it.
+#[test]
+fn wrap_text_in_the_arrange_group_wraps_the_selection() {
+    let _gpu = crate::gpu_lock::gpu_lock();
+    let mut harness = egui_kittest::Harness::builder().with_size(egui::vec2(1800.0, 900.0)).build_ui_state(
+        |ui, app: &mut SlideApp| {
+            app.logic(ui.ctx());
+            app.ui(ui);
+        },
+        SlideApp::new(Session::with_new(), Services::default()),
+    );
+    let story = "Text flows around a shape that has text wrap turned on, keeping a small gap from its edge on every line beside it. ".repeat(5);
+    let s = &mut harness.state_mut().session;
+    s.execute("slide.new", &json!({"layout": "blank"})).unwrap();
+    s.execute("shape.insert", &json!({"preset": "rect", "rect": [60.0, 60.0, 840.0, 400.0], "text": story})).unwrap();
+    s.execute("format.fill", &json!({"color": "none"})).ok();
+    let pic = s.execute("shape.insert", &json!({"preset": "ellipse", "rect": [600.0, 80.0, 220.0, 160.0]})).unwrap()["id"].as_u64().unwrap();
+    s.execute("edit.select", &json!({"ids": [pic]})).unwrap();
+    harness.state_mut().ui.tab = "Shape Format".into();
+    harness.run_steps(3);
+    harness.get_by_label("Wrap options").click();
+    harness.run_steps(2);
+    harness.get_by_label("Wrap Around, 8 pt Gap").click();
+    harness.run_steps(3);
+    let st = harness.state().session.active().unwrap();
+    assert_eq!(st.selected_shapes().first().and_then(|x| x.text_wrap).map(|w| w.margin), Some(8.0));
+    if let (Ok(dir), Ok(img)) = (std::env::var("SLIDECRAFT_UI_SHOTS"), harness.render()) {
+        let _ = img.save(std::path::Path::new(&dir).join("wrap.png"));
+    }
+}

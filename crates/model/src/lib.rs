@@ -369,6 +369,26 @@ pub struct Shape {
     /// into them (`deckcraft_render::thread`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thread_next: Option<ShapeId>,
+    /// Text wrap (SlideCraft): text in other boxes on the slide keeps clear of this shape's
+    /// bounding box by `margin` points.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text_wrap: Option<TextWrap>,
+}
+
+/// How text in other boxes flows around a shape.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct TextWrap {
+    /// Space kept between the shape's bounding box and the text, in points (0–200).
+    pub margin: f64,
+}
+
+impl TextWrap {
+    pub const MAX_MARGIN: f64 = 200.0;
+    /// The margin, made safe to use.
+    pub fn margin(&self) -> f64 {
+        if self.margin.is_finite() { self.margin.clamp(0.0, Self::MAX_MARGIN) } else { 0.0 }
+    }
 }
 
 /// A SmartArt diagram's data: its layout and its outline of nodes (the Text Pane).
@@ -445,6 +465,7 @@ impl Default for Shape {
             raw_ext: None,
             diagram: None,
             thread_next: None,
+            text_wrap: None,
         }
     }
 }

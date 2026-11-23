@@ -166,10 +166,12 @@ pub(crate) struct BreakParams<'a> {
     pub(crate) default_tab: f64,
     pub(crate) x0_first: f64,
     pub(crate) x0_rest: f64,
+    /// Text wrap: per line, (move right, narrow by); lines past the end are not cut.
+    pub(crate) cuts: &'a [(f64, f64)],
 }
 
 pub(crate) fn break_lines(p: &ParaShaped, params: &BreakParams) -> Vec<RawLine> {
-    let BreakParams { first_w, rest_w, wrap, tab_stops, default_tab, x0_first, x0_rest } = *params;
+    let BreakParams { first_w, rest_w, wrap, tab_stops, default_tab, x0_first, x0_rest, cuts } = *params;
     let text: String = p.cells.iter().map(|c| c.ch).collect();
     let (allowed, _) = break_opportunities(&text, p.props.latin_line_break.unwrap_or(false));
     let hang = p.props.hanging_punct.unwrap_or(false);
@@ -180,8 +182,9 @@ pub(crate) fn break_lines(p: &ParaShaped, params: &BreakParams) -> Vec<RawLine> 
         return vec![RawLine::plain(0, 0, 0)];
     }
     while start < n {
-        let avail = if lines.is_empty() { first_w } else { rest_w };
-        let x0 = if lines.is_empty() { x0_first } else { x0_rest };
+        let (cut_dx, cut_w) = cuts.get(lines.len()).copied().unwrap_or((0.0, 0.0));
+        let avail = (if lines.is_empty() { first_w } else { rest_w } - cut_w).max(1.0);
+        let x0 = if lines.is_empty() { x0_first } else { x0_rest } + cut_dx;
         let mut x = 0.0;
         let mut last_break: Option<usize> = None;
         let mut i = start;

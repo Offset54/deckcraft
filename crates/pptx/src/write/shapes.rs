@@ -139,7 +139,8 @@ fn cnvpr(w: &mut W, x: &mut Exp, o: &mut Out, id: u32, s: &Shape) {
         .o("title", (!s.title.is_empty()).then_some(s.title.as_str()));
     let thread = (x.thread_next.get(&s.id).copied(), x.thread_joined.contains(&s.id));
     let threaded = thread.0.is_some() || thread.1;
-    if s.click.is_none() && s.hover.is_none() && !s.decorative && !threaded {
+    let wrap = s.text_wrap.map(|w| w.margin());
+    if s.click.is_none() && s.hover.is_none() && !s.decorative && !threaded && wrap.is_none() {
         w.empty("p:cNvPr", a);
         return;
     }
@@ -150,7 +151,7 @@ fn cnvpr(w: &mut W, x: &mut Exp, o: &mut Out, id: u32, s: &Shape) {
     if let Some(h) = &s.hover {
         dml::hyperlink(w, x, o, "a:hlinkHover", h);
     }
-    if s.decorative || threaded {
+    if s.decorative || threaded || wrap.is_some() {
         w.open0("a:extLst");
         if s.decorative {
             w.open("a:ext", A::new().a("uri", "{C183D7F6-B498-43B3-948B-1728B52AA6E4}"));
@@ -162,6 +163,12 @@ fn cnvpr(w: &mut W, x: &mut Exp, o: &mut Out, id: u32, s: &Shape) {
         if threaded {
             w.open("a:ext", A::new().a("uri", crate::opc::EXT_SC_THREAD));
             w.empty("sc:thread", A::new().a("xmlns:sc", crate::opc::NS_SC).o("next", thread.0).t("joined", thread.1));
+            w.close("a:ext");
+        }
+        // SlideCraft's text wrap: text in other boxes keeps clear of this shape.
+        if let Some(m) = wrap {
+            w.open("a:ext", A::new().a("uri", crate::opc::EXT_SC_WRAP));
+            w.empty("sc:wrap", A::new().a("xmlns:sc", crate::opc::NS_SC).a("margin", m));
             w.close("a:ext");
         }
         w.close("a:extLst");

@@ -186,6 +186,15 @@ fn base(imp: &mut Imp, part: &Part, ctx: &mut IdCtx, nv: Option<&El>) -> Shape {
         s.click = c.child("hlinkClick").and_then(|h| dml::hyperlink(imp, part, h));
         s.hover = c.child("hlinkHover").and_then(|h| dml::hyperlink(imp, part, h));
         s.decorative = c.find("decorative").and_then(|d| d.bool("val")).unwrap_or(false);
+        // SlideCraft's text wrap.
+        if let Some(w) = c
+            .child("extLst")
+            .and_then(|l| l.children_named("ext").find(|e| e.attr("uri") == Some(crate::opc::EXT_SC_WRAP)))
+            .and_then(|e| e.child("wrap"))
+        {
+            let margin = w.f64("margin").filter(|m| m.is_finite()).unwrap_or(0.0).clamp(0.0, deckcraft_model::TextWrap::MAX_MARGIN);
+            s.text_wrap = Some(deckcraft_model::TextWrap { margin });
+        }
         // SlideCraft's threaded text; `next` is a file id until `remap_connectors`.
         if let Some(t) = c
             .child("extLst")

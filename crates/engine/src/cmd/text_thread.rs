@@ -4,11 +4,11 @@
 use std::sync::Arc;
 
 use deckcraft_model::text::TextBody;
-use deckcraft_model::{ShapeId, ShapeKind, Slide};
+use deckcraft_model::{ShapeId, ShapeKind, Slide, TextWrap};
 use deckcraft_render::thread::{MAX_FRAMES, chains};
 use serde_json::{Value, json};
 
-use super::{CommandSpec, bad, cmd, has_slide, id_param};
+use super::{CommandSpec, bad, cmd, edit_shapes, has_selection, has_slide, id_param};
 use crate::{Result, Session};
 
 pub fn specs() -> Vec<CommandSpec> {
@@ -21,6 +21,15 @@ pub fn specs() -> Vec<CommandSpec> {
             "{to: id of a text box on the current slide, from?: id (default: the selected shape)}, or {} with two boxes selected (the first continues in the second) — text `from`'s thread cannot hold continues in `to`; `to`'s own text moves to the end of the thread → {thread: [ids from the first box]}",
             has_slide,
             thread_to
+        ),
+        cmd!(
+            "arrange.textWrap",
+            "Wrap Text",
+            ["Shape Format", "Arrange"],
+            None,
+            "{mode: none|around (text in other boxes on the slide keeps clear of the shape's bounding box), margin?: pt 0–200 (default 8), ids?: [id] (default: the selection)}",
+            has_selection,
+            text_wrap
         ),
         cmd!(
             "text.unthread",
@@ -117,6 +126,29 @@ fn thread_to(s: &mut Session, p: &Value) -> Result<Value> {
     })?;
     let slide = s.doc()?.current_slide().cloned().ok_or_else(|| bad(CMD, "no slide"))?;
     Ok(json!({"thread": thread_of(&slide, from).iter().map(|i| i.0).collect::<Vec<_>>()}))
+}
+
+fn text_wrap(s: &mut Session, p: &Value) -> Result<Value> {
+    const CMD: &str = "arrange.textWrap";
+    let wrap = match p.get("mode").and_then(Value::as_str) {
+        Some("none") => None,
+        Some("around") => {
+            let margin = match p.get("margin") {
+                None | Some(Value::Null) => 8.0,
+                Some(v) => v
+                    .as_f64()
+                    .filter(|m| m.is_finite() && (0.0..=TextWrap::MAX_MARGIN).contains(m))
+                    .ok_or_else(|| bad(CMD, format!("`margin` must be 0–{} pt", TextWrap::MAX_MARGIN)))?,
+            };
+            Some(TextWrap { margin })
+        }
+        _ => return Err(bad(CMD, "`mode` must be none or around")),
+    };
+    edit_shapes(s, p, CMD, move |sh| {
+        sh.text_wrap = wrap;
+        Ok(())
+    })?;
+    Ok(json!({}))
 }
 
 fn unthread(s: &mut Session, p: &Value) -> Result<Value> {
@@ -248,5 +280,21 @@ mod tests {
         let (mut s, a, b) = two_boxes();
         s.execute("edit.select", &json!({"ids": [a, b]})).expect("select");
         assert_eq!(s.execute("text.threadTo", &json!({})).expect("link")["thread"], json!([a, b]));
+    }
+
+    #[test]
+    fn wrap_text_sets_and_clears_the_shapes_wrap() {
+        let (mut s, a, _) = two_boxes();
+        s.execute("edit.select", &json!({"ids": [a]})).expect("select");
+        s.execute("arrange.textWrap", &json!({"mode": "around", "margin": 12})).expect("wrap");
+        let wrap = |s: &Session| s.doc().expect("doc").selected_shapes().first().and_then(|x| x.text_wrap);
+        assert_eq!(wrap(&s), Some(deckcraft_model::TextWrap { margin: 12.0 }));
+        for bad in [json!({"mode": "tight"}), json!({"mode": "around", "margin": -1}), json!({"mode": "around", "margin": 1000})] {
+            assert!(s.execute("arrange.textWrap", &bad).is_err(), "{bad}");
+        }
+        s.execute("arrange.textWrap", &json!({"mode": "none"})).expect("off");
+        assert_eq!(wrap(&s), None);
+        s.execute("edit.undo", &json!({})).expect("undo");
+        assert_eq!(wrap(&s), Some(deckcraft_model::TextWrap { margin: 12.0 }));
     }
 }

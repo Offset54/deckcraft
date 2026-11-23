@@ -231,3 +231,69 @@ fn snapping_paragraphs_put_their_baselines_on_the_slide_grid() {
     let bl = |l: &TextLayout| l.lines.iter().map(|x| x.baseline.to_bits()).collect::<Vec<_>>();
     assert_eq!(bl(&none), bl(&free));
 }
+
+#[test]
+fn text_keeps_clear_of_a_shape_it_wraps_around() {
+    let w = 500.0;
+    let long = format!("{TEXT} {TEXT} {TEXT}");
+    for composer in [None, Some(Composer::Paragraph)] {
+        let (mut p, mut sh) = deck(&[long.as_str()], w);
+        set(&mut sh, |para| para.props.composer = composer);
+        let plain = lay(&p, &sh, w);
+        // A picture-sized shape on the right of the box, from y = 30 to 130, wrapped with 6 pt.
+        let pic = Shape {
+            id: deckcraft_model::ShapeId(900),
+            xfrm: Some(Xfrm::new(300.0, 30.0, 150.0, 100.0)),
+            text_wrap: Some(deckcraft_model::TextWrap { margin: 6.0 }),
+            ..Default::default()
+        };
+        {
+            let slide = std::sync::Arc::make_mut(&mut p.slides[0]);
+            slide.shapes = vec![sh.clone(), pic];
+        }
+        let wrapped = lay(&p, &sh, w);
+        assert_eq!(drawn_text(&wrapped), drawn_text(&plain), "{composer:?}: nothing is lost");
+        let (o_l, o_t, o_b) = (300.0 - 6.0, 30.0 - 6.0, 130.0 + 6.0);
+        let mut beside = 0;
+        for li in &wrapped.lines {
+            if li.top < o_b && li.bottom > o_t {
+                beside += 1;
+                assert!(li.extent.1 <= o_l + 0.5, "{composer:?}: a line beside the shape stops before it: {:?}", li.extent);
+            }
+        }
+        assert!(beside >= 3, "{composer:?}: several lines run beside the shape");
+        let below = wrapped.lines.iter().filter(|li| li.top >= o_b).map(|li| li.extent.1).fold(0.0, f64::max);
+        assert!(below > o_l + 20.0, "{composer:?}: below the shape lines use the full width again");
+        assert!(wrapped.lines.len() > plain.lines.len());
+    }
+}
+
+#[test]
+fn wrap_follows_where_anchoring_puts_the_lines() {
+    let (w, h) = (500.0, 420.0);
+    let long = format!("{TEXT} {TEXT} {TEXT}");
+    let (mut p, mut sh) = deck(&[long.as_str()], w);
+    sh.xfrm = Some(Xfrm::new(0.0, 0.0, w, h));
+    if let Some(t) = sh.text.as_mut() {
+        t.body.anchor = Some(deckcraft_model::text::Anchor::Middle);
+    }
+    let pic = Shape {
+        id: deckcraft_model::ShapeId(900),
+        xfrm: Some(Xfrm::new(300.0, 190.0, 150.0, 60.0)),
+        text_wrap: Some(deckcraft_model::TextWrap { margin: 0.0 }),
+        ..Default::default()
+    };
+    std::sync::Arc::make_mut(&mut p.slides[0]).shapes = vec![sh.clone(), pic];
+    let ctx = Ctx::for_slide(&p, &p.slides[0]).expect("ctx");
+    let l = layout(
+        &ctx,
+        &sh,
+        sh.text.as_ref().expect("text"),
+        &Opts { rect: Rect::new(0.0, 0.0, w, h), fields: &NoFields, prompt_color: None, no_shrink: true },
+    );
+    let beside: Vec<_> = l.lines.iter().filter(|li| li.top < 250.0 && li.bottom > 190.0).collect();
+    assert!(!beside.is_empty());
+    assert!(beside.iter().all(|li| li.extent.1 <= 300.5), "lines beside the shape stop before it");
+    let above = l.lines.iter().filter(|li| li.bottom <= 190.0).map(|li| li.extent.1).fold(0.0, f64::max);
+    assert!(above > 320.0, "lines above the shape use the full width: {above}");
+}

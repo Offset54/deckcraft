@@ -27,6 +27,27 @@ pub struct Ctx<'a> {
     /// The baseline grid in force as (increment, offset): the slide's, else its layout's, else
     /// the master's.
     pub grid: Option<(f64, f64)>,
+    /// Shapes on the slide that text wraps around: (shape, bounding box in slide points grown
+    /// by its wrap margin). Unrotated shapes only.
+    pub wrap: Vec<(crate::ShapeId, deckcraft_geom::Rect)>,
+}
+
+/// Most shapes text wraps around on one slide (hostile files).
+pub const MAX_WRAP_SHAPES: usize = 64;
+
+fn wrap_of(slide: &Slide) -> Vec<(crate::ShapeId, deckcraft_geom::Rect)> {
+    slide
+        .shapes
+        .iter()
+        .filter_map(|s| {
+            let w = s.text_wrap?;
+            let x = s.xfrm?;
+            let m = w.margin();
+            let ok = x.rot.abs() < 1e-9 && [x.x, x.y, x.w, x.h].iter().all(|v| v.is_finite()) && x.w > 0.0 && x.h > 0.0;
+            ok.then(|| (s.id, deckcraft_geom::Rect::new(x.x - m, x.y - m, x.x + x.w + m, x.y + x.h + m)))
+        })
+        .take(MAX_WRAP_SHAPES)
+        .collect()
 }
 
 fn grid_of(slide: Option<&Slide>, layout: Option<&Layout>, master: &Master) -> Option<(f64, f64)> {
@@ -38,7 +59,7 @@ impl<'a> Ctx<'a> {
         let (master, layout) = pres.master_for(slide)?;
         let map = slide.color_map.as_ref().or(layout.and_then(|l| l.color_map.as_ref())).unwrap_or(&master.color_map).clone();
         let grid = grid_of(Some(slide), layout, master);
-        Some(Ctx { pres, master, layout, owner: Owner::Slide, scheme: master.scheme_with(&map), color_map: map, grid })
+        Some(Ctx { pres, master, layout, owner: Owner::Slide, scheme: master.scheme_with(&map), color_map: map, grid, wrap: wrap_of(slide) })
     }
     pub fn for_layout(pres: &'a Presentation, master: &'a Master, layout: &'a Layout) -> Ctx<'a> {
         let map = layout.color_map.as_ref().unwrap_or(&master.color_map).clone();
@@ -50,6 +71,7 @@ impl<'a> Ctx<'a> {
             scheme: master.scheme_with(&map),
             color_map: map,
             grid: grid_of(None, Some(layout), master),
+            wrap: vec![],
         }
     }
     pub fn for_master(pres: &'a Presentation, master: &'a Master) -> Ctx<'a> {
@@ -61,6 +83,7 @@ impl<'a> Ctx<'a> {
             scheme: master.scheme(),
             color_map: master.color_map.clone(),
             grid: grid_of(None, None, master),
+            wrap: vec![],
         }
     }
     pub fn color(&self, c: &ColorRef, ph: Option<Rgba>) -> Rgba {

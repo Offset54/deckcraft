@@ -70,6 +70,7 @@ pub fn layout(ctx: &Ctx, shape: &Shape, body: &TextBody, opts: &Opts) -> TextLay
 }
 
 /// Geometry of the text box shared by every line: rotation, inner rectangle, wrapping and columns.
+#[derive(Clone)]
 struct BoxGeom {
     vert: TextDir,
     rotation: f64,
@@ -79,6 +80,9 @@ struct BoxGeom {
     col_gap: f64,
     col_w: f64,
     rtl_cols: bool,
+    /// Shapes this text wraps around, in text-area coordinates (x from the text area's left
+    /// edge, y from its top), already grown by their wrap margins.
+    obstacles: Vec<Rect>,
 }
 
 impl BoxGeom {
@@ -121,7 +125,7 @@ impl BoxGeom {
         let col_gap = bp.col_spacing.unwrap_or(0.0).max(0.0);
         let col_w = ((inner.width() - col_gap * (ncols as f64 - 1.0)) / ncols as f64).max(1.0);
         let rtl_cols = bp.rtl_col.unwrap_or(false) && ncols > 1;
-        BoxGeom { vert, rotation, inner, wrap, ncols, col_gap, col_w, rtl_cols }
+        BoxGeom { vert, rotation, inner, wrap, ncols, col_gap, col_w, rtl_cols, obstacles: vec![] }
     }
 
     /// East Asian vertical text: CJK stands upright in text turned a quarter turn; stacked text
@@ -242,6 +246,8 @@ struct ParaEnv<'a> {
     first_x: f64,
     rest_x: f64,
     tabs: &'a [Tab],
+    /// Per line: (move right, narrow by) for text wrap; lines past the end are not cut.
+    cuts: &'a [(f64, f64)],
 }
 
 impl ParaEnv<'_> {
@@ -253,23 +259,36 @@ impl ParaEnv<'_> {
 pub(crate) fn layout_scaled(ctx: &Ctx, shape: &Shape, body: &TextBody, bp: &BodyProps, opts: &Opts, scale: f64, reduce: f64) -> TextLayout {
     #[cfg(test)]
     LAYOUT_PASSES.with(|n| n.set(n.get() + 1));
-    let g = BoxGeom::new(shape, bp, opts.rect);
+    let mut g = BoxGeom::new(shape, bp, opts.rect);
+    g.obstacles = obstacles(ctx, shape, &g);
     let shaped_paras = shape_paragraphs(ctx, shape, body, opts, scale, g.upright());
-    let mut out = TextLayout { inner: g.inner, font_scale: scale, line_reduction: reduce, rotation: g.rotation, ..Default::default() };
     let first_last = bp.space_first_last.unwrap_or(false);
-    let mut flow = Flow { y: 0.0, prev_after: 0.0, tail: 0.0, lines: vec![] };
-    for (pi, p) in shaped_paras.iter().enumerate() {
-        place_paragraph(p, pi, &g, (reduce, first_last), &mut flow, &mut out);
+    // Lines are stacked from the text's top; anchoring moves the block afterwards. Text wrap
+    // needs the final heights of lines, so text not anchored at the top is stacked a second
+    // time with the obstacles moved by the first stacking's anchor offset.
+    let stack = |g: &BoxGeom| {
+        let mut out = TextLayout { inner: g.inner, font_scale: scale, line_reduction: reduce, rotation: g.rotation, ..Default::default() };
+        let mut flow = Flow { y: 0.0, prev_after: 0.0, tail: 0.0, lines: vec![] };
+        for (pi, p) in shaped_paras.iter().enumerate() {
+            place_paragraph(p, pi, g, (reduce, first_last), &mut flow, &mut out);
+        }
+        // The text ends at the last line's descent under exact spacing; the last paragraph's
+        // space after counts only when the body says so.
+        let total = (flow.y - flow.tail).max(0.0) + if first_last { flow.prev_after } else { 0.0 };
+        out.content_height = total;
+        let mut lines = flow.lines;
+        assign_columns(&mut lines, g);
+        let used_h = if g.ncols > 1 { lines.iter().map(|l| l.info.bottom).fold(0.0, f64::max) } else { total };
+        out.overflow = used_h > g.inner.height() + 0.5 || (g.ncols > 1 && lines.last().is_some_and(|l| l.info.bottom > g.inner.height() + 0.5));
+        let origin = text_origin(&lines, g, bp, used_h);
+        (out, lines, origin)
+    };
+    let (mut out, mut lines, (mut ox, mut oy)) = stack(&g);
+    let dy = oy - g.inner.y0;
+    if !g.obstacles.is_empty() && dy.abs() > 0.5 {
+        let shifted = BoxGeom { obstacles: g.obstacles.iter().map(|r| Rect::new(r.x0, r.y0 - dy, r.x1, r.y1 - dy)).collect(), ..g.clone() };
+        (out, lines, (ox, oy)) = stack(&shifted);
     }
-    // The text ends at the last line's descent under exact spacing; the last paragraph's space
-    // after counts only when the body says so.
-    let total = (flow.y - flow.tail).max(0.0) + if first_last { flow.prev_after } else { 0.0 };
-    out.content_height = total;
-    let mut lines = flow.lines;
-    assign_columns(&mut lines, &g);
-    let used_h = if g.ncols > 1 { lines.iter().map(|l| l.info.bottom).fold(0.0, f64::max) } else { total };
-    out.overflow = used_h > g.inner.height() + 0.5 || (g.ncols > 1 && lines.last().is_some_and(|l| l.info.bottom > g.inner.height() + 0.5));
-    let (ox, oy) = text_origin(&lines, &g, bp, used_h);
     // Baseline grid: lines of snapping paragraphs move down onto the slide's grid. Only for
     // horizontal text in an unrotated, unflipped shape, where the slide's vertical axis is the
     // text's.
@@ -343,6 +362,73 @@ fn snap_to_grid(lines: &mut [PlacedLine], paras: &[ParaShaped], y0: f64, grid: (
     lowest
 }
 
+/// Lines estimated past this many are not cut by text wrap.
+const MAX_WRAP_LINES: usize = 400;
+
+/// The shapes `shape`'s text wraps around, in text-area coordinates: horizontal text in one
+/// column of an unrotated, unflipped shape only.
+fn obstacles(ctx: &Ctx, shape: &Shape, g: &BoxGeom) -> Vec<Rect> {
+    if ctx.wrap.is_empty() || g.rotation.abs() > 1e-9 || g.ncols != 1 || !matches!(g.vert, TextDir::Horizontal) {
+        return Vec::new();
+    }
+    let x = resolve::xfrm(ctx, shape);
+    if x.rot.abs() > 1e-9 || x.flip_h || x.flip_v {
+        return Vec::new();
+    }
+    let (ox, oy) = (x.x + g.inner.x0, x.y + g.inner.y0);
+    let area = Rect::new(0.0, 0.0, g.inner.width(), g.inner.height().max(0.0) + 10_000.0);
+    ctx.wrap
+        .iter()
+        .filter(|(id, _)| *id != shape.id)
+        .map(|(_, r)| Rect::new(r.x0 - ox, r.y0 - oy, r.x1 - ox, r.y1 - oy))
+        .filter(|r| r.x1 > area.x0 && r.x0 < area.x1 && r.y1 > area.y0)
+        .collect()
+}
+
+/// Per line of a paragraph starting at `top`: (move right, narrow by) so the line keeps clear of
+/// the obstacles, taking the wider side of each. Lines are placed at the paragraph's lead line
+/// pitch for this estimate. `edges`: (first line's start, other lines' start, end).
+fn wrap_cuts(p: &ParaShaped, g: &BoxGeom, top: f64, edges: (f64, f64, f64), reduce: f64) -> Vec<(f64, f64)> {
+    if g.obstacles.is_empty() || !g.wrap {
+        return Vec::new();
+    }
+    let (asc, desc) = line_metrics(&p.lead_face, p.lead_size);
+    let natural = (asc + desc).max(p.lead_size);
+    let pitch = match p.props.line_spacing {
+        Some(Spacing::Pct(f)) => natural * (f - reduce).max(f * 0.1).max(0.0),
+        Some(Spacing::Pts(v)) => v * (1.0 - reduce),
+        None => natural * (1.0 - reduce),
+    }
+    .max(1.0);
+    let lowest = g.obstacles.iter().map(|r| r.y1).fold(f64::NEG_INFINITY, f64::max);
+    let mut out = Vec::new();
+    for k in 0..MAX_WRAP_LINES {
+        let y = top + k as f64 * pitch;
+        if y >= lowest {
+            break;
+        }
+        let base_l = if k == 0 { edges.0 } else { edges.1 };
+        let base_r = edges.2;
+        let (mut l, mut r) = (base_l, base_r);
+        for o in g.obstacles.iter().filter(|o| o.y0 < y + pitch && o.y1 > y) {
+            if o.x1 <= l || o.x0 >= r {
+                continue;
+            }
+            if o.x0 - l >= r - o.x1 {
+                r = r.min(o.x0);
+            } else {
+                l = l.max(o.x1);
+            }
+        }
+        let r = r.max(l + 1.0);
+        out.push((l - base_l, (base_r - base_l) - (r - l)));
+    }
+    while out.last().is_some_and(|c| c.0 == 0.0 && c.1 <= 0.0) {
+        out.pop();
+    }
+    out
+}
+
 /// Where the first line's text starts: past the bullet when there is one.
 fn first_line_start(has_bullet: bool, margin: f64, indent: f64, bullet_w: f64) -> f64 {
     if !has_bullet {
@@ -370,6 +456,10 @@ fn place_paragraph(p: &ParaShaped, pi: usize, g: &BoxGeom, spacing: (f64, bool),
     let tabs = tabs_of(props);
     let first_w = (g.col_w - first_x - mr).max(1.0);
     let rest_w = (g.col_w - rest_x - mr).max(1.0);
+    // The first paragraph's space before counts only when the body says so.
+    let before = if pi == 0 && !first_last { 0.0 } else { spacing_pts(props.space_before, p.lead_size) };
+    let top = flow.y + before.max(0.0) + flow.prev_after;
+    let cuts = if p.rtl { Vec::new() } else { wrap_cuts(p, g, top, (first_x, rest_x, g.col_w - mr), reduce) };
     let params = BreakParams {
         first_w,
         rest_w,
@@ -378,17 +468,16 @@ fn place_paragraph(p: &ParaShaped, pi: usize, g: &BoxGeom, spacing: (f64, bool),
         default_tab: props.default_tab.unwrap_or(72.0),
         x0_first: first_x,
         x0_rest: rest_x,
+        cuts: &cuts,
     };
     let composed = match props.composer {
         Some(Composer::Paragraph) if !g.upright_text() => compose_lines(p, &params, ComposeOpts::of(p)),
         _ => None,
     };
     let raw = composed.unwrap_or_else(|| break_lines(p, &params));
-    // The first paragraph's space before counts only when the body says so.
-    let before = if pi == 0 && !first_last { 0.0 } else { spacing_pts(props.space_before, p.lead_size) };
-    flow.y += before.max(0.0) + flow.prev_after;
+    flow.y = top;
     let first_line_idx = flow.lines.len();
-    let env = ParaEnv { p, g, reduce, margin, indent, mr, bullet_w, first_x, rest_x, tabs: &tabs };
+    let env = ParaEnv { p, g, reduce, margin, indent, mr, bullet_w, first_x, rest_x, tabs: &tabs, cuts: &cuts };
     for (li, rl) in raw.iter().enumerate() {
         let is_last = li + 1 == raw.len();
         let placed = place_line(&env, pi, rl, li, is_last, flow);
@@ -574,8 +663,9 @@ fn place_line(env: &ParaEnv, pi: usize, rl: &RawLine, li: usize, is_last: bool, 
     let baseline = if exact { top + lh * 0.8 } else { top + asc * ratio };
     flow.tail = if exact { (lh * 0.2 - desc).max(-lh) } else { 0.0 };
     flow.y += lh;
-    let x0 = env.start_x(li);
-    let avail = (g.col_w - x0 - env.mr).max(0.0);
+    let (cut_dx, cut_w) = env.cuts.get(li).copied().unwrap_or((0.0, 0.0));
+    let x0 = env.start_x(li) + cut_dx;
+    let avail = (g.col_w - env.start_x(li) - env.mr - cut_w).max(0.0);
     let n = rl.end.saturating_sub(rl.start);
     let line_cells = p.cells.get(rl.start..rl.end).unwrap_or(&[]);
     let (mut adv, width) = line_advances(env, rl, is_last, x0);
@@ -600,7 +690,7 @@ fn place_line(env: &ParaEnv, pi: usize, rl: &RawLine, li: usize, is_last: bool, 
     let line_w = text_w + hyphen_w;
     // The line box, in column coordinates: the start edge is the left one for LTR and the
     // right one (S = W - rIns) for RTL paragraphs.
-    let (box_l, box_r) = if p.rtl { (env.mr, g.col_w - x0) } else { (x0, g.col_w - env.mr) };
+    let (box_l, box_r) = if p.rtl { (env.mr, g.col_w - x0) } else { (x0, x0 + avail) };
     let left = line_left(align, filled, p.rtl, (box_l - hang_l, box_r + hang_r), line_w, slack, n);
     // Distance from the box's start edge to the text (bullets move with centred or
     // end-aligned text); protrusion does not move the bullet.
