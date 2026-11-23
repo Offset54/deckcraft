@@ -66,6 +66,8 @@ pub fn ui_shortcut(app: &mut SlideApp, key: egui::Key, m: Mods) -> bool {
         (F1, true, false, false) => "view.collapseRibbon",
         (F9, false, true, false) => "view.gridlines",
         (F9, false, false, true) => "view.guides",
+        // SlideCraft: one keystroke between Grid view and the single-slide view (decision 003).
+        (B, true, false, true) if app.session.active().is_some() => "view.grid",
         (K, true, false, false) => {
             app.dialog = Some(crate::dialogs::Dialog::new("hyperlink"));
             return true;
@@ -218,6 +220,7 @@ pub fn menu_tree() -> Vec<(&'static str, Vec<(&'static str, &'static str)>)> {
             vec![
                 ("Normal", "view.normal"),
                 ("Slide Sorter", "view.sorter"),
+                ("Grid View ⇄ Single Slide", "view.grid"),
                 ("Notes Page", "view.notesPage"),
                 ("Outline View", "view.outline"),
                 ("Reading View", "view.reading"),
@@ -290,6 +293,11 @@ pub fn menu_tree() -> Vec<(&'static str, Vec<(&'static str, &'static str)>)> {
                 ("Group", "arrange.group"),
                 ("Ungroup", "arrange.ungroup"),
                 ("Regroup", "arrange.regroup"),
+                ("Select Members", "edit.selectChildren"),
+                ("Select Parent", "edit.selectParent"),
+                ("-", ""),
+                ("Frame Selection", "frame.create"),
+                ("Make Frame", "frame.set"),
                 ("-", ""),
                 ("Rotate Left 90°", "arrange.rotateLeft"),
                 ("Rotate Right 90°", "arrange.rotateRight"),

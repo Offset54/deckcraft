@@ -8,8 +8,10 @@
 #![forbid(unsafe_code)]
 
 pub mod anim;
+pub mod autolayout;
 pub mod bidi;
 pub mod brand;
+pub mod canvas;
 pub mod chart;
 pub mod defaults;
 pub mod edit;
@@ -373,6 +375,18 @@ pub struct Shape {
     /// bounding box by `margin` points.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub text_wrap: Option<TextWrap>,
+    /// On a group: it is a frame (SlideCraft, `canvas::Frame`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub frame: Option<canvas::Frame>,
+    /// On a frame: auto layout of its members (SlideCraft).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_layout: Option<canvas::AutoLayout>,
+    /// On a frame's member: how it follows the frame when the frame is resized (SlideCraft).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub constraints: Option<canvas::Constraints>,
+    /// On an auto layout frame's member: how it sizes and where it goes (SlideCraft).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub layout_child: Option<canvas::ChildLayout>,
 }
 
 /// How text in other boxes flows around a shape.
@@ -466,6 +480,10 @@ impl Default for Shape {
             diagram: None,
             thread_next: None,
             text_wrap: None,
+            frame: None,
+            auto_layout: None,
+            constraints: None,
+            layout_child: None,
         }
     }
 }

@@ -180,7 +180,7 @@ pub(crate) fn union_bounds(xs: &[Xfrm]) -> Option<Rect> {
 pub const MAX_GROUP_DEPTH: usize = 32;
 
 /// How many groups deep `shapes` nest (0 without groups).
-fn group_depth(shapes: &[Shape]) -> usize {
+pub(crate) fn group_depth(shapes: &[Shape]) -> usize {
     let mut d = 0;
     deckcraft_model::walk(shapes, &mut |sh, depth| {
         if sh.is_group() {
@@ -294,10 +294,12 @@ fn refit_list(old: Option<&Vec<Shape>>, list: &mut [Shape], depth: usize) {
             )
         });
         let smart = sh.diagram.is_some();
+        let framed = sh.frame.is_some();
         let ShapeKind::Group { children, child } = &mut sh.kind else { continue };
         refit_list(old_children, children, depth + 1);
-        if smart {
-            // A SmartArt graphic's box is its own; its shapes are regenerated inside it.
+        if smart || framed {
+            // A SmartArt graphic's box is its own; its shapes are regenerated inside it. A frame's
+            // box is its own too (SlideCraft): its members move inside it.
             continue;
         }
         let (Some(old_children), Some((old_x, old_child))) = (old_children, own_before) else { continue };

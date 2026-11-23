@@ -469,10 +469,25 @@ impl Renderer {
                     Some(fl) => Some((paint::tiled_per_point(fl, self.per_point_xy(m, depth)).into_owned(), m, Rect::new(0.0, 0.0, x.w, x.h))),
                 };
                 let outer = std::mem::replace(&mut self.group_fill, own);
+                // SlideCraft frame: its own box is drawn (fill, outline, effects, corner radius)
+                // behind its members, which it may clip.
+                let frame_clip = match s.frame {
+                    Some(fr) => {
+                        let bg = frame_background(s, &x, &fr);
+                        self.shape_at(ctx, f, rctx, &bg, parent, depth);
+                        fr.clip.then(|| kurbo::RoundedRect::new(0.0, 0.0, x.w, x.h, fr.radius(x.w, x.h)).to_path(0.1))
+                    }
+                    None => None,
+                };
+                if let Some(clip) = &frame_clip {
+                    ctx.set_transform(m);
+                    ctx.push_layer(Some(clip), None, None, None, None);
+                }
                 // A group's outer shadow is cast by everything in it, as PowerPoint draws it: the
                 // children drawn once more under the shadow's offset, scale and skew, recoloured to
-                // the shadow colour and blurred, below the group.
+                // the shadow colour and blurred, below the group. A frame's box casts its own.
                 if !self.in_shadow_pass
+                    && s.frame.is_none()
                     && let Some(sh) = s.effects.as_ref().and_then(|e| e.outer_shadow.as_ref())
                 {
                     let c = rctx.color(&sh.color, None);
@@ -502,6 +517,9 @@ impl Renderer {
                 }
                 for c in children {
                     self.shape(ctx, f, rctx, c, gm, depth + 1);
+                }
+                if frame_clip.is_some() {
+                    ctx.pop_layer();
                 }
                 self.group_fill = outer;
             }
@@ -1278,4 +1296,23 @@ impl Renderer {
             ctx.pop_layer();
         }
     }
+}
+
+/// The box a SlideCraft frame draws behind its members: a (rounded) rectangle with the frame's
+/// fill, outline and effects. No fill or outline set means none (a frame is see-through until
+/// it is given a fill).
+pub(crate) fn frame_background(s: &Shape, x: &deckcraft_geom::Xfrm, fr: &deckcraft_model::canvas::Frame) -> Shape {
+    let r = fr.radius(x.w, x.h);
+    let short = x.w.abs().min(x.h.abs());
+    let geom = if r > 0.0 && short > 0.0 {
+        Geom::Preset { name: "roundRect".into(), adj: vec![(r / short * 100_000.0).clamp(0.0, 50_000.0)] }
+    } else {
+        Geom::preset("rect")
+    };
+    let fill = match &s.fill {
+        Some(Fill::Group) | None => Some(Fill::None),
+        Some(f) => Some(f.clone()),
+    };
+    let line = Some(s.line.clone().unwrap_or(Line { fill: Some(Fill::None), ..Default::default() }));
+    Shape { id: s.id, xfrm: Some(*x), kind: ShapeKind::Shape, geom, fill, line, effects: s.effects.clone(), ..Default::default() }
 }

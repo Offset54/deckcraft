@@ -17,6 +17,7 @@ pub(crate) mod crop_section;
 mod designer;
 mod effect_presets;
 mod format_shape;
+mod frame_section;
 mod reading_order;
 mod smartart;
 mod thesaurus;

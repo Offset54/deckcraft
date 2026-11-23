@@ -92,6 +92,14 @@ impl Session {
                 continue;
             }
             if let Some(h) = hit_shape(st, sh, p, tol) {
+                // Inside a group already (one of its members is selected): the member under the
+                // pointer at that level is hit, not the whole group (SlideCraft).
+                if let Hit::Shape { id, .. } = h
+                    && let Some(inner) = member_in_context(st, id, p, tol).and_then(|m| st.shape(m))
+                    && let Some(h2) = hit_shape(st, inner, p, tol)
+                {
+                    return Some(h2);
+                }
                 return Some(h);
             }
         }
@@ -122,6 +130,7 @@ impl Session {
                     return Ok(Value::Null);
                 }
                 self.tool.hover = self.hit_test(p, tol);
+                self.tool.measures = if ev.mods.alt { self.hover_measures(p, tol) } else { vec![] };
                 self.tool.guide_hover =
                     if self.tool.hover.is_none() && matches!(self.tool.kind, ToolKind::Select) { self.guide_at(p, tol) } else { None };
                 let line_tool = matches!(&self.tool.kind, ToolKind::Shape { preset } if deckcraft_geom::preset::is_line_like(preset));
@@ -614,5 +623,50 @@ impl Session {
 
     pub(super) fn is_picture(&self, id: ShapeId) -> bool {
         self.active().and_then(|d| d.shape(id)).is_some_and(|s| matches!(s.kind, ShapeKind::Picture { .. } | ShapeKind::Media(_)))
+    }
+}
+
+/// The member of top-level group `top` under `p`, when the selection is already inside `top`:
+/// the deepest group around a selected member that has a member under `p` gives it. `None` when
+/// nothing in `top` is selected (the group itself is hit), or the member can't be edited in place.
+pub(super) fn member_in_context(st: &crate::DocState, top: ShapeId, p: Point, tol: f64) -> Option<ShapeId> {
+    use deckcraft_model::canvas;
+    let shapes = st.shapes();
+    let chain = st.selection.shapes.iter().filter_map(|s| canvas::ancestors(shapes, *s)).filter(|c| c.first() == Some(&top)).max_by_key(Vec::len)?;
+    for g in chain.iter().rev() {
+        let Some(ShapeKind::Group { children, .. }) = st.shape(*g).map(|s| &s.kind) else { continue };
+        if let Some(c) = children.iter().rev().filter(|c| !c.hidden).find(|c| hit_shape(st, c, p, tol).is_some()) {
+            return canvas::editable_in_place(shapes, c.id).then_some(c.id);
+        }
+    }
+    None
+}
+
+/// The member of group `id` under `p`, one level in (a double-click into a group).
+pub(super) fn member_under(st: &crate::DocState, id: ShapeId, p: Point, tol: f64) -> Option<ShapeId> {
+    let Some(ShapeKind::Group { children, .. }) = st.shape(id).map(|s| &s.kind) else { return None };
+    let c = children.iter().rev().filter(|c| !c.hidden).find(|c| hit_shape(st, c, p, tol).is_some())?;
+    deckcraft_model::canvas::editable_in_place(st.shapes(), c.id).then_some(c.id)
+}
+
+impl Session {
+    /// What Alt shows over the canvas: the distances from the selection to the object under `p`,
+    /// or to the page's edges when the pointer is over nothing (or over the selection itself).
+    pub(crate) fn hover_measures(&self, p: Point, tol: f64) -> Vec<crate::cmd::canvas::Gap> {
+        let Some(st) = self.active() else { return vec![] };
+        if st.selection.shapes.is_empty() || st.selection.text.is_some() || !matches!(self.tool.kind, ToolKind::Select) {
+            return vec![];
+        }
+        let xs: Vec<Xfrm> = st.selection.shapes.iter().filter_map(|i| st.shape(*i)).map(|sh| xfrm_of(&st.doc, &st.selection, sh)).collect();
+        let Some(from) = cmd::arrange::union_bounds(&xs) else { return vec![] };
+        let target = match self.hit_test(p, tol) {
+            Some(Hit::Shape { id, .. }) if !st.selection.shapes.contains(&id) => st.shape(id).map(|sh| xfrm_of(&st.doc, &st.selection, sh).bounds()),
+            _ => None,
+        };
+        let to = target.unwrap_or_else(|| {
+            let size = crate::page_size(st);
+            Rect::new(0.0, 0.0, size.width, size.height)
+        });
+        cmd::canvas::measure(from, to)
     }
 }

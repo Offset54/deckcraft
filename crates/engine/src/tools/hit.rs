@@ -244,6 +244,10 @@ pub(super) fn hit_shape(st: &crate::DocState, sh: &Shape, p: Point, tol: f64) ->
                     }
                 }
             }
+            // A frame is hit anywhere in its box, members or not (SlideCraft).
+            if sh.frame.is_some() && near {
+                return Some(Hit::Shape { id: sh.id, text: false });
+            }
             None
         }
         ShapeKind::Ink { strokes } => {

@@ -50,7 +50,12 @@ impl Session {
                                 self.execute("text.edit", &json!({"id": mid, "at": [pos.0, pos.1]}))?;
                                 self.execute("text.selectWord", &json!({}))
                             }
-                            _ => Ok(Value::Null),
+                            // SlideCraft: no text there, so the double-click goes into the group
+                            // and selects the member under the pointer.
+                            _ => match super::pointer::member_under(st, id, p, tol) {
+                                Some(m) => self.execute("edit.select", &json!({"ids": [m]})),
+                                None => Ok(Value::Null),
+                            },
                         }
                     }
                     _ => {

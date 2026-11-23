@@ -130,9 +130,23 @@ impl Session {
                     self.execute("edit.delete", &json!({}))?;
                     return Ok(json!({"handled": true}));
                 }
+                // SlideCraft: Enter on groups selects their members, Shift+Enter (or Esc) on a
+                // member selects its group, so groups are edited without ungrouping.
+                "enter" | "return" if !mods.alt && self.doc().is_ok_and(|st| mods.shift && crate::cmd::canvas::selection_in_group(st)) => {
+                    let r = self.execute("edit.selectParent", &json!({}))?;
+                    return Ok(json!({"handled": true, "command": "edit.selectParent", "result": r}));
+                }
+                "enter" | "return" if !mods.shift && !mods.alt && self.doc().is_ok_and(crate::cmd::canvas::selection_is_groups) => {
+                    let r = self.execute("edit.selectChildren", &json!({}))?;
+                    return Ok(json!({"handled": true, "command": "edit.selectChildren", "result": r}));
+                }
                 "enter" | "return" | "f2" => {
                     self.execute("text.edit", &json!({}))?;
                     return Ok(json!({"handled": true}));
+                }
+                "escape" | "esc" if self.doc().is_ok_and(crate::cmd::canvas::selection_in_group) => {
+                    let r = self.execute("edit.selectParent", &json!({}))?;
+                    return Ok(json!({"handled": true, "command": "edit.selectParent", "result": r}));
                 }
                 "escape" | "esc" => {
                     self.execute("edit.deselect", &json!({}))?;

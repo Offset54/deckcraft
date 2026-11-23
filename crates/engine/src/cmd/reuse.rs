@@ -710,8 +710,11 @@ mod tests {
         assert!(matches!(&group.kind, ShapeKind::Group { .. }));
         let ShapeKind::Group { children, child } = &group.kind else { return };
         assert_eq!(group.xfrm, Some(Xfrm::new(50.0, 40.0, 150.0, 75.0)));
-        assert_eq!(*child, Xfrm::new(0.0, 0.0, 150.0, 75.0));
-        assert_eq!(children.first().and_then(|s| s.xfrm), Some(Xfrm::new(100.0, 50.0, 40.0, 20.0)));
+        // Where the member is drawn on the slide. (SlideCraft keeps a group's child space equal to
+        // its box, so the member is stored at that place; the drawing is what matters.)
+        let gx = group.xfrm.expect("group transform");
+        let drawn = children.first().and_then(|s| s.xfrm).map(|c| super::super::arrange::child_to_parent(&gx, child, &c));
+        assert_eq!(drawn, Some(Xfrm::new(150.0, 90.0, 40.0, 20.0)));
 
         let imported_master = doc.masters.last().expect("imported master");
         assert_eq!(imported_master.shapes.first().and_then(|s| s.xfrm), Some(Xfrm::new(400.0, 200.0, 50.0, 25.0)));

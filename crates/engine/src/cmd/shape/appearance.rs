@@ -126,6 +126,11 @@ fn edit_group_appearance(s: &mut Session, p: &Value, cmd: &str, f: impl Fn(&mut 
             return Ok(());
         }
         f(sh)?;
+        // A frame's fill, outline and effects are its own box's (SlideCraft): its members keep
+        // theirs. A plain group passes them on, as in PowerPoint.
+        if sh.frame.is_some() {
+            return Ok(());
+        }
         if let Some(children) = sh.children_mut() {
             for child in children {
                 apply(child, depth + 1, f)?;

@@ -4,6 +4,7 @@ pub mod animation;
 pub mod arrange;
 pub mod artistic;
 pub mod background;
+pub mod canvas;
 pub mod compress;
 pub mod design;
 pub mod edit;
@@ -176,6 +177,7 @@ pub fn command_specs() -> &'static [CommandSpec] {
         v.extend(recolor::specs());
         v.extend(arrange::specs());
         v.extend(selection::specs());
+        v.extend(canvas::specs());
         v.extend(merge::specs());
         v.extend(points::specs());
         v.extend(text::specs());

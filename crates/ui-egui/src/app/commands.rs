@@ -52,6 +52,11 @@ impl SlideApp {
             "view.normal" => self.ui.view = ViewMode::Normal,
             "view.outline" => self.ui.view = ViewMode::Outline,
             "view.sorter" => self.ui.view = ViewMode::Sorter,
+            "view.grid" => {
+                let on = self.flag(p, self.ui.view == ViewMode::Sorter);
+                self.ui.view = if on { ViewMode::Sorter } else { ViewMode::Normal };
+                return Ok(json!({"view": if on { "grid" } else { "single" }}));
+            }
             "view.notesPage" => self.ui.view = ViewMode::NotesPage,
             "view.reading" => self.start_show(self.session.active().map(|d| d.selection.slide).unwrap_or(0), true),
             "view.notes" => self.ui.notes = self.flag(p, self.ui.notes),

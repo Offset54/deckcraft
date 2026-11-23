@@ -37,6 +37,8 @@ const QUERIES: &[&str] = &[
     "animation.get",
     "comment.list",
     "guide.list",
+    // Distances between objects (Phase 3): geometry read off the slide.
+    "arrange.measure",
     "font.used",
     "media.info",
     "file.info",
@@ -98,6 +100,9 @@ const NOT_UNDO_STEPS: &[&str] = &[
     // Selection, navigation and views: they move the selection or the edited target, not the deck.
     "edit.select",
     "edit.selectAll",
+    // Selecting inside groups and back out (Phase 3): selection only.
+    "edit.selectChildren",
+    "edit.selectParent",
     "edit.deselect",
     "slide.go",
     "slide.next",

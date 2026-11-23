@@ -252,6 +252,9 @@ fn size_tab(app: &mut SlideApp, ui: &mut Ui, sh: &deckcraft_model::Shape, x: dec
         run(app, "shape.altText", json!({"text": alt}));
     }
     ui.data_mut(|d| d.insert_temp(id, (sh.descr.clone(), alt)));
+    if single {
+        super::frame_section::frame_section(app, ui, sh);
+    }
 }
 
 /// Render the shape-format pane with fill/line, effects, size/properties, text, and picture tabs.

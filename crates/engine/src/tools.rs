@@ -279,6 +279,9 @@ pub struct ToolState {
     pub marquee: Option<Rect>,
     pub preview: Option<Xfrm>,
     pub guides: Vec<Guide>,
+    /// Distances shown while Alt is held over the canvas: from the selection to the object under
+    /// the pointer, or to the slide's edges (SlideCraft).
+    pub measures: Vec<crate::cmd::canvas::Gap>,
     pub hover: Option<Hit>,
     pub ink_preview: Vec<(f64, f64, f32)>,
     /// Connection sites to show (slide coordinates) while drawing or dragging a line end, and the

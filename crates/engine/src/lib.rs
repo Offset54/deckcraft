@@ -7,6 +7,7 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 #![forbid(unsafe_code)]
 
+pub mod canvas;
 pub mod cmd;
 pub mod compare;
 pub mod connect;
@@ -734,6 +735,7 @@ impl Session {
         let mut sel = st.selection.clone();
         let r = f(&mut doc, &mut sel)?;
         cmd::arrange::refit_groups(&st.doc, &mut doc);
+        canvas::settle_changed(&st.doc, &mut doc);
         connect::reroute(&mut doc, &sel);
         st.doc = Arc::new(doc);
         st.selection = sel;

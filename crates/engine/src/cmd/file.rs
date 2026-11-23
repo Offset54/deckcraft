@@ -149,11 +149,15 @@ impl Damage {
 
 /// [`open_presentation`], plus what the file had lost or damaged.
 pub fn open_checked(name: &str, bytes: &[u8]) -> Result<(Presentation, Damage)> {
-    if deckcraft_format::sniff(bytes) {
+    let (mut p, damage) = if deckcraft_format::sniff(bytes) {
         let (p, media) = deckcraft_format::load_checked(bytes).map_err(|e| EngineError::Other(e.to_string()))?;
-        return Ok((p, Damage { media, slides: vec![] }));
-    }
-    open_other(name, bytes).map(|(p, slides)| (p, Damage { media: vec![], slides }))
+        (p, Damage { media, slides: vec![] })
+    } else {
+        open_other(name, bytes).map(|(p, slides)| (p, Damage { media: vec![], slides }))?
+    };
+    // SlideCraft: groups carry their members in slide space, so they can be edited in place.
+    crate::canvas::settle_all(&mut p);
+    Ok((p, damage))
 }
 
 fn open_other(name: &str, bytes: &[u8]) -> Result<(Presentation, Vec<String>)> {

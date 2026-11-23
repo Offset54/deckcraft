@@ -206,6 +206,25 @@ pub(super) fn overlays(app: &mut SlideApp, ui: &Ui, painter: &egui::Painter, xf:
             if g.vertical { (Point::new(g.pos, g.from), Point::new(g.pos, g.to)) } else { (Point::new(g.from, g.pos), Point::new(g.to, g.pos)) };
         painter.add(egui::Shape::dashed_line(&[xf.to_screen(a), xf.to_screen(b)], Stroke::new(1.0, t.guide), 5.0, 3.0));
     }
+    // SlideCraft: distances shown while Alt is held (`arrange.measure` on the canvas).
+    let unit = app.session.prefs.units;
+    for g in &app.session.tool.measures {
+        let (a, b) = (xf.to_screen(Point::new(g.from.0, g.from.1)), xf.to_screen(Point::new(g.to.0, g.to.1)));
+        let stroke = Stroke::new(1.0, t.guide);
+        painter.line_segment([a, b], stroke);
+        // End ticks across the line.
+        let across = if g.axis == 'x' { egui::vec2(0.0, 4.0) } else { egui::vec2(4.0, 0.0) };
+        for e in [a, b] {
+            painter.line_segment([e - across, e + across], stroke);
+        }
+        let label = unit.format(g.value);
+        let font = egui::FontId::proportional(11.0);
+        let galley = painter.layout_no_wrap(label, font, Color32::WHITE);
+        let at = a + (b - a) / 2.0;
+        let r = Rect::from_center_size(at, galley.size() + egui::vec2(8.0, 4.0));
+        painter.rect_filled(r, CornerRadius::same(3), t.guide);
+        painter.galley(r.min + egui::vec2(4.0, 2.0), galley, Color32::WHITE);
+    }
     if let Some(m) = app.session.tool.marquee {
         let r = Rect::from_two_pos(xf.to_screen(Point::new(m.x0, m.y0)), xf.to_screen(Point::new(m.x1, m.y1)));
         painter.rect(

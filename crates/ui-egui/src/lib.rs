@@ -102,6 +102,12 @@ pub const UI_COMMANDS: &[(&str, &str, Option<&str>, &str)] = &[
     ("view.normal", "Normal", None, "{}"),
     ("view.outline", "Outline View", None, "{}"),
     ("view.sorter", "Slide Sorter", None, "{}"),
+    (
+        "view.grid",
+        "Grid View",
+        Some("Cmd+Alt+B"),
+        "{on?: bool} → {view} (SlideCraft: switch between Grid view, every slide as a zoomable board, and the single-slide view; decision 003)",
+    ),
     ("view.notesPage", "Notes Page", None, "{}"),
     ("view.reading", "Reading View", None, "{}"),
     ("view.notes", "Notes", None, "{on?: bool}"),
@@ -464,7 +470,11 @@ mod field_frame_tests;
 #[cfg(test)]
 mod find_dialog_tests;
 #[cfg(test)]
+mod frame_pane_tests;
+#[cfg(test)]
 mod gpu_lock;
+#[cfg(test)]
+mod grid_view_tests;
 #[cfg(test)]
 mod huge_deck_tests;
 #[cfg(test)]
