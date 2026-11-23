@@ -1301,6 +1301,29 @@ fn column_formats_are_flattened_for_powerpoint_and_come_back_as_formats() {
 }
 
 #[test]
+fn a_thread_saved_without_flowing_keeps_its_text_as_it_was() {
+    use deckcraft_model::ShapeId;
+    let mut p = defaults::new_presentation(None);
+    let first = p.slides[0].id;
+    let s = p.slide_mut(first).expect("slide");
+    s.shapes[0].text = Some(TextBody::from_text("One story\nin two paragraphs"));
+    s.shapes[0].thread_next = Some(s.shapes[1].id);
+    s.shapes[1].text = Some(TextBody::default());
+    let (a, b) = (s.shapes[0].id, s.shapes[1].id);
+    let twice = round(&round(&p));
+    let text = |id: ShapeId| {
+        twice.slides[0]
+            .shapes
+            .iter()
+            .find(|x| x.id == id)
+            .and_then(|x| x.text.as_ref())
+            .map(|t| t.paragraphs.iter().map(|p| p.text()).collect::<Vec<_>>())
+    };
+    assert_eq!(text(a), Some(vec!["One story".to_string(), "in two paragraphs".to_string()]));
+    assert!(text(b).is_none_or(|t| t.iter().all(String::is_empty)), "the second box adds no empty paragraphs");
+}
+
+#[test]
 fn a_table_fill_round_trips() {
     let mut p = defaults::new_presentation(None);
     let mut t = Table::new(2, 2, 200.0, 40.0);

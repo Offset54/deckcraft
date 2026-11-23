@@ -146,6 +146,8 @@ pub fn merge_threads(shapes: &mut [Shape], joined: &HashSet<ShapeId>) {
             frames += 1;
             let Some(frame) = shapes.get_mut(j) else { break };
             let paras = frame.text.as_mut().map(|t| std::mem::take(&mut t.paragraphs)).unwrap_or_default();
+            // A box holding no text (the empty paragraph every text body has) adds nothing.
+            let paras = if paras.iter().all(|p| p.text().is_empty()) { Vec::new() } else { paras };
             let mut paras = paras.into_iter();
             if joined.contains(&frame.id)
                 && let (Some(last), Some(first)) = (story.paragraphs.last_mut(), paras.next())

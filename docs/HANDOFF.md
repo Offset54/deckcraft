@@ -1,6 +1,6 @@
 # SlideCraft: handoff
 
-Status on 2026-11-23. Start here if you know nothing about this project.
+Status on 2026-11-23 (Phase 2 done; waiting for the owner's Phase 3 go-ahead). Start here if you know nothing about this project.
 
 ## Goal
 
@@ -36,7 +36,8 @@ Open (for the owner; context in [`recon.md`](recon.md) §11 and
 [`reports/phase-1.md`](reports/phase-1.md) §5):
 1. **Shared crates.** Use `craft-text`, `craft-fig`, `craft-idml` and `craft-pdf` from
    `craft-libs`, or copy the code from DesignCraft and FigCraft. Recommended: use the shared
-   crates.
+   crates. *Phase 2 went ahead on 2026-11-23 with the recommendation (`craft-text`); the owner did
+   not answer this question explicitly.*
 2. **Document tree.** Keep the nested shape tree and add optional fields, or move to a flat node
    map. Recommended: keep the tree. This needs a decision record before Phase 3.
 3. **Collaboration.** Keep it as a stretch goal or drop it.
@@ -52,7 +53,7 @@ Open (for the owner; context in [`recon.md`](recon.md) §11 and
 |---|---|---|
 | 0: reconnaissance | Done | [`reports/phase-0.md`](reports/phase-0.md), [`recon.md`](recon.md), [`fork-patches.md`](fork-patches.md) |
 | 1: foundations | Done: golden images, `.pptx` round trip by pixels, command audit, undo bench | [`reports/phase-1.md`](reports/phase-1.md), [`command-audit.md`](command-audit.md), [`porting-log.md`](porting-log.md) |
-| 2: typography (DesignCraft `compose`) | **Not started. Waiting for the owner's go-ahead** | |
+| 2: typography | Done: paragraph composer, hyphenation, optical margins, styles, baseline grid, threaded text, text wrap, table column formats | [`reports/phase-2.md`](reports/phase-2.md) |
 | 3–8 | Not started | The brief, §4 |
 
 ## `.pptx` corpus
@@ -80,13 +81,13 @@ Open (for the owner; context in [`recon.md`](recon.md) §11 and
 1. Read these, in order:
    - the brief
    - this file
-   - [`reports/phase-1.md`](reports/phase-1.md)
+   - [`reports/phase-1.md`](reports/phase-1.md) and [`reports/phase-2.md`](reports/phase-2.md)
    - [`recon.md`](recon.md) §1 and §11
 2. Set up the build:
    - Clone `storytold/craft-fonts` next to the repo as `../craft-fonts`.
    - On Linux, install `libasound2-dev` and `mesa-vulkan-drivers`, and add the Rust target
      `wasm32-unknown-unknown` ([`recon.md`](recon.md) §12).
    - Run `CARGO_INCREMENTAL=0 cargo xtask ci`. With incremental builds, `target/` reaches 28 GB.
-3. Ask the owner for the Phase 2 go-ahead and for the open decisions above. Do not start Phase 2
-   without that go-ahead.
+3. Ask the owner for the Phase 3 go-ahead and for the open decisions above (and those in
+   [`reports/phase-2.md`](reports/phase-2.md) §5). Do not start Phase 3 without that go-ahead.
 4. For corpus work, follow [`pptx-corpus/HANDOFF.md`](pptx-corpus/HANDOFF.md).

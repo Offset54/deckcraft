@@ -18,7 +18,7 @@ Nothing was ported. Every Phase 1 item was either already in the host or built h
 | Golden-image harness | DesignCraft's damage-region pixel tests; FigCraft's retained-render random walk | Built in the host | Both siblings compare renders inside their own renderer's tests against their own document model. The host needed whole-deck comparison against stored pictures: `deckcraft_render::golden` (compare with a channel and area tolerance, a diff picture, PNG decode) and `crates/engine/tests/it/golden.rs` |
 | `.pptx` round trip by pixels | — | Built in the host | `crates/engine/tests/it/pptx_roundtrip.rs`: each sample deck goes through `.pptx` and must still match its golden pictures; `DECKCRAFT_PPTX_CORPUS=<folder>` runs a loss report over decks kept outside the repository |
 
-## Phase 2: Typography (started 2026-11-23)
+## Phase 2: Typography (2026-11-23)
 
 The owner gave the go-ahead on 2026-11-23 without choosing between the shared crates and copies
 (recon §11 item 3); this phase uses the recommended default, the shared `craft-text`, which is
