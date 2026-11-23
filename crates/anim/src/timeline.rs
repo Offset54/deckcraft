@@ -10,8 +10,6 @@ use deckcraft_model::{AnimClass, AnimStart, Animation, ColorScheme, Rgba, Scheme
 use crate::AnimState;
 use crate::effects::{EffectSpec, exit_base, motion_path};
 
-/// Delay between paragraphs of a by-paragraph build that isn't on click (seconds).
-pub const PARAGRAPH_STAGGER: f64 = 0.5;
 const MAX_EFFECTS: usize = 100_000;
 const MAX_ITERATIONS: f64 = 1.0e6;
 
@@ -279,14 +277,15 @@ impl Timeline {
                     Some(c) => Rgba::from_hex(c).map(After::Dim).unwrap_or(After::None),
                     None => After::None,
                 };
-                let mut first_start = 0.0;
                 for (k, para) in paras.iter().enumerate() {
+                    // Later paragraphs of a build follow on click, or else each after the one
+                    // before it, as the file stores them (`afterEffect`) and the reader folds them.
                     let mode = if k == 0 {
                         a.start
                     } else if a.start == AnimStart::OnClick {
                         AnimStart::OnClick
                     } else {
-                        AnimStart::WithPrevious
+                        AnimStart::AfterPrevious
                     };
                     let first_of_seq = steps.is_empty();
                     let mode = if first_of_seq && matches!(seq, Sequence::Trigger(_)) { AnimStart::OnClick } else { mode };
@@ -308,10 +307,7 @@ impl Timeline {
                             group_begin = max_end;
                         }
                     }
-                    let start = if k > 0 && a.start != AnimStart::OnClick { first_start + k as f64 * PARAGRAPH_STAGGER } else { group_begin + delay };
-                    if k == 0 {
-                        first_start = start;
-                    }
+                    let start = group_begin + delay;
                     let end = start + span;
                     max_end = max_end.max(end);
                     let step = steps.len().saturating_sub(1);

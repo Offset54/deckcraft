@@ -1176,8 +1176,11 @@ fn presentation_xml(x: &mut Exp, o: &mut Out, masters: &[(u64, String)], notes: 
         w.close("p:custShowLst");
     }
     cust_data(&mut w, x, o, &p.tags);
-    let dts = if p.default_text_style.is_empty() { defaults::default_text_style() } else { p.default_text_style.clone() };
-    dml::list_style(&mut w, x, o, "p:defaultTextStyle", &dts);
+    // Only a deck that has one: a file without it (LibreOffice writes none) reads back with an
+    // empty style, and writing the defaults (kerning, sizes) in its place would change its text.
+    if !p.default_text_style.is_empty() {
+        dml::list_style(&mut w, x, o, "p:defaultTextStyle", &p.default_text_style);
+    }
     let sections = section_slides(p);
     let raw = p.raw_ext.as_deref().filter(|r| !r.trim().is_empty());
     let styles = deckcraft_model::text_style::to_json(&p.text_styles);

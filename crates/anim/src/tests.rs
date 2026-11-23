@@ -278,17 +278,37 @@ fn text_build_by_paragraph() {
         assert!(tl.state(ShapeId(1), Some(0), 1, 0.0).visible);
         assert!(!tl.state(ShapeId(1), Some(1), 1, 0.0).visible);
     }
-    // With previous: staggered within one step.
+    // With previous: one step, each later paragraph after the one before it (1 s effects).
     a.start = AnimStart::WithPrevious;
     s.animations = vec![a];
     let tl = Timeline::new(&s, W, H);
     assert_eq!(tl.steps(), 1);
     let e = tl.effects();
     if e.len() >= 2 {
-        assert!((e[1].start - e[0].start - 0.5).abs() < 1e-9);
+        assert!((e[1].start - e[0].start - 1.0).abs() < 1e-9);
     }
     // The shape itself isn't hidden.
     assert!(tl.state(ShapeId(1), None, 0, 0.0).visible);
+}
+
+/// A by-paragraph build that isn't on click plays each later paragraph after the one before it
+/// ends, as `.pptx` stores it (`afterEffect` per paragraph): 200 ms paragraphs at 0, 0.2 and
+/// 0.4 s, not every 0.5 s. Reading such a file folds it into one build, so a fixed stagger
+/// changed the timing of a deck on re-save (corpus deck 01, slide 89).
+#[test]
+fn an_after_previous_paragraph_build_chains_its_paragraphs() {
+    let mut s = slide_with(vec![]);
+    s.shapes[0].text = Some(TextBody::from_text("one\ntwo\nthree"));
+    let mut a = anim(1, AnimClass::Entrance, "fade", AnimStart::AfterPrevious);
+    a.text_build = TextBuild::ByParagraph;
+    a.duration_ms = 200;
+    a.delay_ms = 100;
+    s.animations = vec![a];
+    let starts: Vec<f64> = Timeline::new(&s, W, H).effects().iter().map(|e| e.start).collect();
+    assert_eq!(starts.len(), 3);
+    for (got, want) in starts.iter().zip([0.1, 0.4, 0.7]) {
+        assert!((got - want).abs() < 1e-9, "{starts:?}");
+    }
 }
 
 #[test]

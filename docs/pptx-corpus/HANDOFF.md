@@ -2,6 +2,11 @@
 
 Status on 2026-11-23. For whoever picks this job up next.
 
+**Latest:** on branch `claude/pptx-corpus-losses` all ten decks pass the round-trip test, and the
+test is stricter. Items 3 and 4 below are done there. See
+[`baseline.md`](baseline.md#results-after-the-fixes-2026-11-23). There is no PR; the owner
+decides.
+
 ## Done
 
 - **Ten decks chosen and checked.** All are CC-BY-4.0 from Zenodo, listed with authors, DOIs,
@@ -44,12 +49,31 @@ Status on 2026-11-23. For whoever picks this job up next.
 1. **PR or not.** `claude/pptx-corpus-manifest` changes docs only. The owner decides whether to
    open a PR. Do not change CI.
 2. **Run `fetch.ps1` once on Windows**, to confirm the fallback logic after this change.
-3. **Fix the test-design gaps** in [`baseline.md`](baseline.md#test-design-described-not-fixed).
-   The test compares SlideCraft with itself after the first open, so it cannot see what that first
-   open loses (decks 02 and 10). This is separate work, best done as its own PR.
-4. **Fix the losses.**
-   - Deck 01 slide 89 drops two `p:txEl` animations on re-save.
-   - Decks 02, 05, 06 and 10 have pixel differences.
+3. **Done on `claude/pptx-corpus-losses`: the test-design gaps** in
+   [`baseline.md`](baseline.md#test-design-described-not-fixed).
+   - The test names each deck before it works on it.
+   - It checks first-open animation effects against counts taken from the package XML.
+   - It compares what the slide show plays, effect by effect, instead of a count.
+   - It compares slide size, sections, layouts and embedded fonts.
+   - Still open:
+     - Hyperlinks, chart, SmartArt and equation data are compared only through pixels.
+     - Pixel results depend on the fonts the machine has. The test does not gate on them.
+     - There is no per-deck time limit, only the name printed first.
+4. **Done on `claude/pptx-corpus-losses`: the losses.** Decks 02 and 10 lost nothing on first
+   open: the reader folds `p:txEl` effects into a build that plays the same. Four fixes:
+   - **Deck 01:** a by-paragraph build that isn't on click played with a fixed 0.5 s stagger.
+     It now chains its paragraphs, as the file does (`crates/anim`).
+   - **SmartArt (decks 02 and 05):** SmartArt drawing shapes now keep their middle anchor.
+   - **Deck 10 and 02:** `p:defaultTextStyle` is no longer invented for decks without one.
+   - **Deck 06:** theme line styles without a fill are no longer given one.
+
+   Two questions are left open. They are listed under
+   [Open questions](baseline.md#open-questions-these-fixes-leave): whether PowerPoint draws
+   fill-less theme lines, and whether its slide show chains these builds. Both need PowerPoint
+   observed on Windows or Mac.
+   - **Commit `3d08904` is red when checked out alone.** It adds the deck 01 regression test, and
+     the fix only lands in `f9e73f1`. CI passed at every pushed tip. Squash the two if the
+     history must be green at every commit.
 5. **Fill the coverage gaps** listed under `coverage_gaps` in the manifest:
    - No deck has embedded audio.
    - There is only one native chart.

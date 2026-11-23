@@ -595,7 +595,15 @@ fn diagram(w: &mut W, x: &mut Exp, o: &mut Out, cx: &mut Ctx, s: &Shape, d: &dec
             style_tag(&mut dw, st, "dsp:style");
         }
         if let Some(tb) = &c.text {
-            dml::text_body(&mut dw, x, &mut dout, "dsp:txBody", tb, false);
+            // As for `p:sp`: text without its own anchor sits in the middle in the model, and a
+            // drawing shape without one would read back at the top.
+            if c.ph.is_none() && !c.text_box && tb.body.anchor.is_none() {
+                let mut tb = tb.clone();
+                tb.body.anchor = Some(deckcraft_model::text::Anchor::Middle);
+                dml::text_body(&mut dw, x, &mut dout, "dsp:txBody", &tb, false);
+            } else {
+                dml::text_body(&mut dw, x, &mut dout, "dsp:txBody", tb, false);
+            }
         }
         dw.close("dsp:sp");
     }
