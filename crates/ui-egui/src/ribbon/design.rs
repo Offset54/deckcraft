@@ -154,6 +154,7 @@ pub(super) fn design(app: &mut SlideApp, ui: &mut Ui) {
             }
         });
         big(app, ui, Icon::FormatBackground, "Format\nBackground", "view.pane", json!({"pane": "background"}));
+        baseline_grid_menu(app, ui);
     });
     group(ui, |ui| {
         big(app, ui, Icon::DesignIdeas, "Design\nIdeas", "view.pane", json!({"pane": "designer"}));
@@ -170,4 +171,26 @@ pub fn paint_theme_tile(p: &egui::Painter, r: Rect, th: &deckcraft_model::Theme)
         let c = theme::to_color32(th.colors.colors.get(4 + k).copied().unwrap_or(deckcraft_color::Rgba::BLACK));
         p.rect_filled(Rect::from_min_size(pos2(r.min.x + 8.0 + k as f32 * w, r.max.y - 11.0), vec2(w - 1.5, 5.0)), CornerRadius::ZERO, c);
     }
+}
+
+/// Design › Baseline Grid (`design.baselineGrid`): a grid on the slide master, for every slide,
+/// that paragraphs with Snap to Baseline Grid line up on. Sizes are common body leadings.
+fn baseline_grid_menu(app: &mut SlideApp, ui: &mut Ui) {
+    let r = big_button(ui, Icon::Gridlines, "Baseline\nGrid", enabled(app, "design.baselineGrid"));
+    egui::Popup::menu(&r).show(|ui| {
+        let cur = app.session.active().and_then(|d| {
+            let slide = d.doc.slides.get(d.selection.slide)?;
+            let (m, _) = d.doc.master_for(slide)?;
+            m.baseline_grid.and_then(|g| g.active()).map(|(i, _)| i)
+        });
+        if ui.selectable_label(cur.is_none(), "Off").clicked() {
+            run(app, "design.baselineGrid", json!({"scope": "master", "increment": 0}));
+        }
+        for pt in [12.0, 18.0, 24.0, 30.0, 36.0] {
+            let on = cur.is_some_and(|c| (c - pt).abs() < 1e-6);
+            if ui.selectable_label(on, format!("Every {pt:.0} pt")).clicked() {
+                run(app, "design.baselineGrid", json!({"scope": "master", "increment": pt}));
+            }
+        }
+    });
 }

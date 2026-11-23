@@ -615,6 +615,29 @@ pub struct Comment {
     pub shape: Option<ShapeId>,
 }
 
+/// A slide-wide grid of baselines (points from the slide's top edge). Lines of paragraphs with
+/// `snapToGrid` move down onto the next grid line.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct BaselineGrid {
+    /// Distance between grid lines; 0 turns the grid off.
+    pub increment: f64,
+    /// Where the first grid line lies below the slide's top edge.
+    pub offset: f64,
+}
+
+impl BaselineGrid {
+    /// Smallest and largest increment honoured (anything else is off).
+    pub const MIN: f64 = 2.0;
+    pub const MAX: f64 = 400.0;
+
+    /// The grid as (increment, offset) when it is on.
+    pub fn active(&self) -> Option<(f64, f64)> {
+        let ok = self.increment.is_finite() && (Self::MIN..=Self::MAX).contains(&self.increment) && self.offset.is_finite();
+        ok.then_some((self.increment, self.offset.rem_euclid(self.increment)))
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Slide {
@@ -623,6 +646,10 @@ pub struct Slide {
     pub name: String,
     pub shapes: Vec<Shape>,
     pub background: Option<Background>,
+    /// Baseline grid for paragraphs that snap to it (SlideCraft typography); a slide's grid
+    /// replaces its layout's, a layout's its master's, and one with no increment turns it off.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub baseline_grid: Option<BaselineGrid>,
     pub hidden: bool,
     pub show_master_shapes: bool,
     pub transition: Option<Transition>,
@@ -650,6 +677,7 @@ impl Default for Slide {
             name: String::new(),
             shapes: vec![],
             background: None,
+            baseline_grid: None,
             hidden: false,
             show_master_shapes: true,
             transition: None,
@@ -745,6 +773,10 @@ pub struct Layout {
     pub kind: LayoutType,
     pub shapes: Vec<Shape>,
     pub background: Option<Background>,
+    /// Baseline grid for paragraphs that snap to it (SlideCraft typography); a slide's grid
+    /// replaces its layout's, a layout's its master's, and one with no increment turns it off.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub baseline_grid: Option<BaselineGrid>,
     pub show_master_shapes: bool,
     pub preserve: bool,
     /// `clrMapOvr`: a colour map replacing the master's for this layout and the slides using it
@@ -779,6 +811,10 @@ pub struct Master {
     pub theme: Theme,
     pub shapes: Vec<Shape>,
     pub background: Option<Background>,
+    /// Baseline grid for paragraphs that snap to it (SlideCraft typography); a slide's grid
+    /// replaces its layout's, a layout's its master's, and one with no increment turns it off.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub baseline_grid: Option<BaselineGrid>,
     pub title_style: text::ListStyle,
     pub body_style: text::ListStyle,
     pub other_style: text::ListStyle,

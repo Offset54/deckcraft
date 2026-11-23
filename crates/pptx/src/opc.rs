@@ -36,6 +36,8 @@ pub const NS_SC: &str = "https://github.com/Offset54/deckcraft/ns/slidecraft/202
 /// `a:pPr/a:extLst/a:ext/@uri` of the paragraph typography extension (`sc:typography`).
 pub const EXT_SC_TYPOGRAPHY: &str = "{60126004-4CC5-4FBA-82AA-1248CB7A995C}";
 /// `a:rPr/a:extLst/a:ext/@uri` of a run's character style (`sc:run/@style`).
+/// `p:sld`/`p:sldLayout`/`p:sldMaster` `p:extLst/p:ext/@uri` of a baseline grid (`sc:baselineGrid`).
+pub const EXT_SC_GRID: &str = "{5B8E2D7A-91C4-4E36-A0F1-3D6C8B72E954}";
 pub const EXT_SC_RUN: &str = "{9E1D3C51-6B7A-4F0E-9D52-2A8C4E7B1F36}";
 /// `p:presentation/p:extLst/p:ext/@uri` of the deck's text styles (`sc:textStyles`, JSON text
 /// in the model's `.deckcraft` form, `deckcraft_model::text_style::to_json`).

@@ -270,6 +270,20 @@ pub(crate) fn layout_scaled(ctx: &Ctx, shape: &Shape, body: &TextBody, bp: &Body
     let used_h = if g.ncols > 1 { lines.iter().map(|l| l.info.bottom).fold(0.0, f64::max) } else { total };
     out.overflow = used_h > g.inner.height() + 0.5 || (g.ncols > 1 && lines.last().is_some_and(|l| l.info.bottom > g.inner.height() + 0.5));
     let (ox, oy) = text_origin(&lines, &g, bp, used_h);
+    // Baseline grid: lines of snapping paragraphs move down onto the slide's grid. Only for
+    // horizontal text in an unrotated, unflipped shape, where the slide's vertical axis is the
+    // text's.
+    if let Some((inc, off)) = ctx.grid
+        && g.rotation.abs() < 1e-9
+        && matches!(g.vert, TextDir::Horizontal)
+    {
+        let x = resolve::xfrm(ctx, shape);
+        if x.rot.abs() < 1e-9 && !x.flip_v {
+            let bottom = snap_to_grid(&mut lines, &shaped_paras, x.y + oy, (inc, off));
+            out.content_height = out.content_height.max(bottom);
+            out.overflow |= bottom > g.inner.height() + 0.5;
+        }
+    }
     // Emit runs, in visual order.
     for mut pl in lines {
         position_line(&mut pl.info, ox, oy, &g);
@@ -295,6 +309,38 @@ pub(crate) fn layout_scaled(ctx: &Ctx, shape: &Shape, body: &TextBody, bp: &Body
     // Merge adjacent decorations of the same colour on the same line.
     out.decos = merge_decos(std::mem::take(&mut out.decos));
     out
+}
+
+/// Moves the lines of snapping paragraphs down so their baselines land on the grid
+/// `(increment, offset)`; `y0` is the slide y of the lines' y = 0. Later lines in the same column
+/// move with them. Returns the lowest line bottom afterwards.
+fn snap_to_grid(lines: &mut [PlacedLine], paras: &[ParaShaped], y0: f64, grid: (f64, f64)) -> f64 {
+    let (inc, off) = grid;
+    let mut shift = 0.0;
+    let mut col = usize::MAX;
+    let mut lowest: f64 = 0.0;
+    for pl in lines.iter_mut() {
+        if pl.info.column != col {
+            col = pl.info.column;
+            shift = 0.0;
+        }
+        if paras.get(pl.info.para).is_some_and(|p| p.props.snap_to_grid == Some(true)) {
+            let b = y0 + pl.info.baseline + shift;
+            let target = off + ((b - off) / inc - 1e-6).ceil() * inc;
+            let d = target - b;
+            if d.is_finite() && d > 0.0 {
+                shift += d;
+            }
+        }
+        pl.info.top += shift;
+        pl.info.baseline += shift;
+        pl.info.bottom += shift;
+        if let Some(b) = pl.bullet.as_mut() {
+            b.2 += shift;
+        }
+        lowest = lowest.max(pl.info.bottom);
+    }
+    lowest
 }
 
 /// Where the first line's text starts: past the bullet when there is one.

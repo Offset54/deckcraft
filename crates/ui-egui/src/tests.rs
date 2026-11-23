@@ -2586,3 +2586,30 @@ fn the_styles_menu_applies_a_paragraph_style() {
         let _ = img.save(std::path::Path::new(&dir).join("styles-applied.png"));
     }
 }
+
+/// Design › Baseline Grid sets the master's grid; the menu then ticks it.
+#[test]
+fn the_baseline_grid_menu_sets_the_masters_grid() {
+    let _gpu = crate::gpu_lock::gpu_lock();
+    // Wide enough that the Design tab's Customize group is on screen, not scrolled off.
+    let mut harness = egui_kittest::Harness::builder().with_size(egui::vec2(1800.0, 900.0)).build_ui_state(
+        |ui, app: &mut SlideApp| {
+            app.logic(ui.ctx());
+            app.ui(ui);
+        },
+        SlideApp::new(Session::with_new(), Services::default()),
+    );
+    harness.run_steps(2);
+    harness.get_by_label("Design").click();
+    harness.run_steps(2);
+    harness.get_by_label("Baseline Grid").click();
+    harness.run_steps(2);
+    if let (Ok(dir), Ok(img)) = (std::env::var("SLIDECRAFT_UI_SHOTS"), harness.render()) {
+        let _ = img.save(std::path::Path::new(&dir).join("grid-menu.png"));
+    }
+    harness.get_by_label("Every 24 pt").click();
+    harness.run_steps(2);
+    let st = harness.state().session.active().unwrap();
+    let grid = st.doc.masters[0].baseline_grid.and_then(|g| g.active());
+    assert_eq!(grid.map(|g| g.0), Some(24.0));
+}

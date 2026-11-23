@@ -253,6 +253,7 @@ pub(super) fn insert_layout(s: &mut Session, p: &Value) -> Result<Value> {
                 kind: deckcraft_model::LayoutType::Custom,
                 shapes: title.into_iter().collect(),
                 background: None,
+                baseline_grid: None,
                 show_master_shapes: true,
                 preserve: true,
                 color_map: None,

@@ -1216,6 +1216,27 @@ fn a_coloured_style_on_a_shape_it_would_vanish_on_is_flattened_to_the_shapes_col
 }
 
 #[test]
+fn baseline_grids_and_snapping_round_trip_without_piling_up() {
+    use deckcraft_model::BaselineGrid;
+    let mut p = defaults::new_presentation(None);
+    Arc::make_mut(&mut p.masters[0]).baseline_grid = Some(BaselineGrid { increment: 24.0, offset: 12.0 });
+    let first = p.slides[0].id;
+    let s = p.slide_mut(first).expect("slide");
+    s.baseline_grid = Some(BaselineGrid { increment: 0.0, offset: 0.0 });
+    let t = s.shapes[0].text.insert(TextBody::from_text("x"));
+    t.paragraphs[0].props.snap_to_grid = Some(true);
+    let twice = round(&round(&p));
+    assert_eq!(twice.masters[0].baseline_grid, Some(BaselineGrid { increment: 24.0, offset: 12.0 }));
+    assert_eq!(twice.slides[0].baseline_grid, Some(BaselineGrid { increment: 0.0, offset: 0.0 }), "a slide's 'off' is kept");
+    assert_eq!(twice.slides[0].shapes[0].text.as_ref().expect("text").paragraphs[0].props.snap_to_grid, Some(true));
+    let bytes = deckcraft_pptx::export(&twice).expect("export");
+    let mut z = zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("zip");
+    let mut xml = String::new();
+    std::io::Read::read_to_string(&mut z.by_name("ppt/slides/slide1.xml").expect("slide"), &mut xml).expect("xml");
+    assert_eq!(xml.matches("sc:baselineGrid").count(), 1, "one grid after two saves: {xml}");
+}
+
+#[test]
 fn a_table_fill_round_trips() {
     let mut p = defaults::new_presentation(None);
     let mut t = Table::new(2, 2, 200.0, 40.0);

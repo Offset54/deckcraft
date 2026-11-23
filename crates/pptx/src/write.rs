@@ -361,6 +361,18 @@ fn ext_children(raw: Option<&str>) -> Option<String> {
     Some(raw.to_string())
 }
 
+/// `raw` extension elements plus SlideCraft's baseline grid, when there is one. The reader takes
+/// the grid back out of the kept extensions, so it is never written twice.
+fn with_grid(raw: Option<String>, grid: Option<deckcraft_model::BaselineGrid>) -> Option<String> {
+    let Some(g) = grid else { return raw };
+    let num = |v: f64| if v.is_finite() { v.clamp(0.0, 10_000.0) } else { 0.0 };
+    let mut e = W::frag();
+    e.open("p:ext", A::new().a("uri", crate::opc::EXT_SC_GRID));
+    e.empty("sc:baselineGrid", A::new().a("xmlns:sc", crate::opc::NS_SC).a("increment", num(g.increment)).a("offset", num(g.offset)));
+    e.close("p:ext");
+    Some(raw.unwrap_or_default() + &e.s)
+}
+
 /// The slide's extension list, plus the modern-comments anchor when the slide has a threaded
 /// comment part: the rel reference is how PowerPoint finds it.
 fn slide_ext_list(w: &mut W, raw: Option<&str>, comment_rel: Option<&str>) {
@@ -781,7 +793,7 @@ fn layout_xml(x: &mut Exp, o: &mut Out, l: &Layout) -> Vec<u8> {
     );
     csld(&mut w, x, o, &l.name, l.background.as_ref(), &l.shapes, &[]);
     clr_map_ovr(&mut w, l.color_map.as_deref());
-    ext_list(&mut w, ext_children(l.raw_ext.as_deref()).as_deref());
+    ext_list(&mut w, with_grid(ext_children(l.raw_ext.as_deref()), l.baseline_grid).as_deref());
     w.close("p:sldLayout");
     w.finish()
 }
@@ -803,7 +815,7 @@ fn master_xml(x: &mut Exp, o: &mut Out, m: &Master, layouts: &[(u64, String)]) -
     dml::list_style(&mut w, x, o, "p:bodyStyle", &m.body_style);
     dml::list_style(&mut w, x, o, "p:otherStyle", &m.other_style);
     w.close("p:txStyles");
-    ext_list(&mut w, ext_children(m.raw_ext.as_deref()).as_deref());
+    ext_list(&mut w, with_grid(ext_children(m.raw_ext.as_deref()), m.baseline_grid).as_deref());
     w.close("p:sldMaster");
     w.finish()
 }
@@ -819,7 +831,7 @@ fn slide_xml(x: &mut Exp, o: &mut Out, s: &Slide, comment_rel: Option<&str>) -> 
     if !s.animations.is_empty() {
         timing::timing(&mut w, x, &s.animations, &s.shapes, &ids);
     }
-    slide_ext_list(&mut w, s.raw_ext.as_deref(), comment_rel);
+    slide_ext_list(&mut w, with_grid(s.raw_ext.clone(), s.baseline_grid).as_deref(), comment_rel);
     w.close("p:sld");
     w.finish()
 }

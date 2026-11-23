@@ -443,6 +443,10 @@ fn typography_menu(app: &mut SlideApp, ui: &mut Ui, st: &Value) {
     if ui.add_enabled(composed, egui::Checkbox::new(&mut hyph, "Hyphenate")).changed() {
         run(app, "format.typography", json!({"hyphenate": hyph}));
     }
+    let mut snap = b("snapToGrid");
+    if ui.checkbox(&mut snap, "Snap to Baseline Grid").on_hover_text("Line up on the grid set in Design › Baseline Grid").changed() {
+        run(app, "format.typography", json!({"snapToGrid": snap}));
+    }
     let mut optical = b("opticalMargin");
     if ui.add_enabled(composed, egui::Checkbox::new(&mut optical, "Optical Margins")).on_hover_text("Hang punctuation into the margins").changed() {
         run(app, "format.typography", json!({"opticalMargin": optical}));

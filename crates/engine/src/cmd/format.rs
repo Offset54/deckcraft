@@ -232,7 +232,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "Typography",
             ["Home", "Paragraph"],
             None,
-            "{composer?: singleLine|paragraph (paragraph: Knuth–Plass total fit, even spacing; singleLine: first fit, as PowerPoint), hyphenate?: bool (US English; needs the paragraph composer), opticalMargin?: bool (punctuation hangs into the margins; needs the paragraph composer)} on the selected paragraphs; null returns a key to inherited; with none of them → the current paragraph's {composer, hyphenate, opticalMargin}",
+            "{composer?: singleLine|paragraph (paragraph: Knuth–Plass total fit, even spacing; singleLine: first fit, as PowerPoint), hyphenate?: bool (US English; needs the paragraph composer), opticalMargin?: bool (punctuation hangs into the margins; needs the paragraph composer), snapToGrid?: bool (lines sit on the slide's baseline grid, design.baselineGrid)} on the selected paragraphs; null returns a key to inherited; with none of them → the current paragraph's {composer, hyphenate, opticalMargin, snapToGrid}",
             has_text_or_shapes,
             typography
         ),

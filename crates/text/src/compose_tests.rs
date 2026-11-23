@@ -204,3 +204,30 @@ fn a_trailing_line_break_opens_an_empty_last_line_in_both_composers() {
     let spans = |l: &TextLayout| l.lines.iter().map(|x| (x.start, x.end)).collect::<Vec<_>>();
     assert_eq!(spans(&single), spans(&composed));
 }
+
+#[test]
+fn snapping_paragraphs_put_their_baselines_on_the_slide_grid() {
+    let w = 300.0;
+    let (mut p, mut sh) = deck(&[TEXT, TEXT], w);
+    sh.xfrm = Some(Xfrm::new(0.0, 37.0, w, 2000.0));
+    if let Some(m) = p.masters.first_mut() {
+        std::sync::Arc::make_mut(m).baseline_grid = Some(deckcraft_model::BaselineGrid { increment: 30.0, offset: 5.0 });
+    }
+    let free = lay(&p, &sh, w);
+    set(&mut sh, |para| para.props.snap_to_grid = Some(true));
+    let snapped = lay(&p, &sh, w);
+    assert_eq!(free.lines.len(), snapped.lines.len());
+    for (a, b) in free.lines.iter().zip(&snapped.lines) {
+        let slide_y = 37.0 + b.baseline;
+        let k = (slide_y - 5.0) / 30.0;
+        assert!((k - k.round()).abs() < 1e-6, "baseline {slide_y} is on the 30 pt grid from 5 pt");
+        assert!(b.baseline >= a.baseline - 1e-9, "lines only move down");
+    }
+    // Without a grid, snapping changes nothing.
+    if let Some(m) = p.masters.first_mut() {
+        std::sync::Arc::make_mut(m).baseline_grid = None;
+    }
+    let none = lay(&p, &sh, w);
+    let bl = |l: &TextLayout| l.lines.iter().map(|x| x.baseline.to_bits()).collect::<Vec<_>>();
+    assert_eq!(bl(&none), bl(&free));
+}

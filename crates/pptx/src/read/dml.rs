@@ -448,6 +448,7 @@ fn typography_ext(ext_lst: &El, pp: &mut ParaProps) {
     pp.composer = t.attr("composer").and_then(Composer::parse);
     pp.hyphenate = t.bool("hyphenate");
     pp.optical_margin = t.bool("opticalMargin");
+    pp.snap_to_grid = t.bool("snapToGrid");
 }
 
 /// `a:pPr` / `a:lvlNpPr` → (level, paragraph props, default run props).

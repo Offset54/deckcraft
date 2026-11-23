@@ -909,6 +909,13 @@ fn read_slide_comments(pkg: &Package, pres_part: &Part, part: &Part, slide: &mut
     }
 }
 
+/// SlideCraft's baseline grid in a slide's, layout's or master's `p:extLst`.
+fn grid_ext(ext_lst: &El) -> Option<deckcraft_model::BaselineGrid> {
+    let g = ext_lst.children_named("ext").find(|e| e.attr("uri") == Some(crate::opc::EXT_SC_GRID))?.child("baselineGrid")?;
+    let num = |k: &str| g.f64(k).filter(|v| v.is_finite()).map(|v| v.clamp(0.0, 10_000.0));
+    Some(deckcraft_model::BaselineGrid { increment: num("increment").unwrap_or(0.0), offset: num("offset").unwrap_or(0.0) })
+}
+
 /// Sections, and the extension elements the model does not understand (kept verbatim).
 fn read_sections(p: &mut Presentation, pres_part: &Part, pres_el: &El, file_slide_ids: &HashMap<u32, SlideId>) {
     let Some(ext) = pres_el.child("extLst") else { return };
@@ -1410,8 +1417,9 @@ fn read_master(imp: &mut Imp, path: &str, doc: &Doc, docs: &HashMap<String, Doc>
             ..Default::default()
         });
     }
+    m.baseline_grid = root.child("extLst").and_then(grid_ext);
     if let Some(ext) = root.child("extLst").filter(|e| !has_rel_refs(e)) {
-        m.raw_ext = Some(ext.elements().map(|e| part.keep(e)).collect());
+        m.raw_ext = Some(ext.elements().filter(|e| e.attr("uri") != Some(crate::opc::EXT_SC_GRID)).map(|e| part.keep(e)).collect());
     }
     m
 }
@@ -1434,8 +1442,9 @@ fn read_layout(imp: &mut Imp, part: &Part, doc: &Doc) -> Layout {
         }
     }
     l.color_map = color_map_override(root);
+    l.baseline_grid = root.child("extLst").and_then(grid_ext);
     if let Some(ext) = root.child("extLst").filter(|e| !has_rel_refs(e)) {
-        l.raw_ext = Some(ext.elements().map(|e| part.keep(e)).collect());
+        l.raw_ext = Some(ext.elements().filter(|e| e.attr("uri") != Some(crate::opc::EXT_SC_GRID)).map(|e| part.keep(e)).collect());
     }
     l
 }
@@ -1475,8 +1484,9 @@ fn read_slide(imp: &mut Imp, part: &Part, doc: &Doc, id: SlideId, layout: Layout
         s.animations = timing::animations(imp, part, &ctx, t, &s.shapes);
         timing::media_settings(t, &ctx, &mut s.shapes);
     }
+    s.baseline_grid = root.child("extLst").and_then(grid_ext);
     if let Some(ext) = root.child("extLst").filter(|e| !has_rel_refs(e)) {
-        s.raw_ext = Some(ext.elements().map(|e| part.keep(e)).collect());
+        s.raw_ext = Some(ext.elements().filter(|e| e.attr("uri") != Some(crate::opc::EXT_SC_GRID)).map(|e| part.keep(e)).collect());
     }
     s
 }

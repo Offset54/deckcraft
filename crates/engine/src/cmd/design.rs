@@ -16,6 +16,7 @@ use super::{
 };
 use crate::{Result, Session, Target};
 
+mod baseline_grid;
 mod colors;
 mod first_number;
 mod master_view;
@@ -35,6 +36,15 @@ use slide_setup::{header_footer, scale_shapes, slide_size};
 pub fn specs() -> Vec<CommandSpec> {
     vec![
         cmd!("design.theme", "Themes", ["Design", "Themes"], None, "{name} (see design.themes)", has_doc, theme),
+        cmd!(
+            "design.baselineGrid",
+            "Baseline Grid",
+            ["Design", "Customize"],
+            None,
+            "{scope?: slide|master (default slide: the current slide; master: its master, for every slide that sets none), increment?: pt (2–400; 0 turns the grid off), offset?: pt from the slide's top edge, clear?: bool (remove this slide's or master's own grid)}; with none of them → {slide, slideSet, master, effective} for the current slide. Paragraphs align to it with format.typography {snapToGrid: true}",
+            has_doc,
+            baseline_grid::baseline_grid
+        ),
         cmd!(
             "design.browseTheme",
             "Browse for Themes…",

@@ -24,20 +24,44 @@ pub struct Ctx<'a> {
     pub scheme: ColorScheme,
     /// The colour map in force: the slide's override, else its layout's, else the master's.
     pub color_map: Vec<(String, String)>,
+    /// The baseline grid in force as (increment, offset): the slide's, else its layout's, else
+    /// the master's.
+    pub grid: Option<(f64, f64)>,
+}
+
+fn grid_of(slide: Option<&Slide>, layout: Option<&Layout>, master: &Master) -> Option<(f64, f64)> {
+    slide.and_then(|s| s.baseline_grid).or(layout.and_then(|l| l.baseline_grid)).or(master.baseline_grid).and_then(|g| g.active())
 }
 
 impl<'a> Ctx<'a> {
     pub fn for_slide(pres: &'a Presentation, slide: &Slide) -> Option<Ctx<'a>> {
         let (master, layout) = pres.master_for(slide)?;
         let map = slide.color_map.as_ref().or(layout.and_then(|l| l.color_map.as_ref())).unwrap_or(&master.color_map).clone();
-        Some(Ctx { pres, master, layout, owner: Owner::Slide, scheme: master.scheme_with(&map), color_map: map })
+        let grid = grid_of(Some(slide), layout, master);
+        Some(Ctx { pres, master, layout, owner: Owner::Slide, scheme: master.scheme_with(&map), color_map: map, grid })
     }
     pub fn for_layout(pres: &'a Presentation, master: &'a Master, layout: &'a Layout) -> Ctx<'a> {
         let map = layout.color_map.as_ref().unwrap_or(&master.color_map).clone();
-        Ctx { pres, master, layout: Some(layout), owner: Owner::Layout, scheme: master.scheme_with(&map), color_map: map }
+        Ctx {
+            pres,
+            master,
+            layout: Some(layout),
+            owner: Owner::Layout,
+            scheme: master.scheme_with(&map),
+            color_map: map,
+            grid: grid_of(None, Some(layout), master),
+        }
     }
     pub fn for_master(pres: &'a Presentation, master: &'a Master) -> Ctx<'a> {
-        Ctx { pres, master, layout: None, owner: Owner::Master, scheme: master.scheme(), color_map: master.color_map.clone() }
+        Ctx {
+            pres,
+            master,
+            layout: None,
+            owner: Owner::Master,
+            scheme: master.scheme(),
+            color_map: master.color_map.clone(),
+            grid: grid_of(None, None, master),
+        }
     }
     pub fn color(&self, c: &ColorRef, ph: Option<Rgba>) -> Rgba {
         let c = match &c.base {

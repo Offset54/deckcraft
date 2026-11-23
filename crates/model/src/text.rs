@@ -317,6 +317,9 @@ pub struct ParaProps {
     /// the text edge looks straight.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub optical_margin: Option<bool>,
+    /// Lines sit on the slide's baseline grid ([`crate::BaselineGrid`]) when it has one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub snap_to_grid: Option<bool>,
     /// Paragraph style id ([`crate::text_style`]). Not inherited: it applies to this paragraph
     /// only.
     #[serde(deserialize_with = "bounded_style_id", skip_serializing_if = "Option::is_none")]
@@ -410,6 +413,7 @@ impl ParaProps {
         self.composer = self.composer.or(p.composer);
         self.hyphenate = self.hyphenate.or(p.hyphenate);
         self.optical_margin = self.optical_margin.or(p.optical_margin);
+        self.snap_to_grid = self.snap_to_grid.or(p.snap_to_grid);
     }
 }
 

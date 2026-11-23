@@ -20,6 +20,7 @@ fn state(pp: &ParaProps) -> Value {
         "composer": pp.composer.unwrap_or(Composer::SingleLine).as_str(),
         "hyphenate": pp.hyphenate.unwrap_or(false),
         "opticalMargin": pp.optical_margin.unwrap_or(false),
+        "snapToGrid": pp.snap_to_grid.unwrap_or(false),
     })
 }
 
@@ -27,7 +28,8 @@ pub(super) fn typography(s: &mut Session, p: &Value) -> Result<Value> {
     let composer = tri(p, "composer", |v| v.as_str().and_then(Composer::parse), "singleLine or paragraph")?;
     let hyphenate = tri(p, "hyphenate", Value::as_bool, "a bool")?;
     let optical = tri(p, "opticalMargin", Value::as_bool, "a bool")?;
-    if composer.is_none() && hyphenate.is_none() && optical.is_none() {
+    let snap = tri(p, "snapToGrid", Value::as_bool, "a bool")?;
+    if composer.is_none() && hyphenate.is_none() && optical.is_none() && snap.is_none() {
         // Nothing to change: report the paragraph's effective settings.
         return Ok(state(&current_para(s)));
     }
@@ -40,6 +42,9 @@ pub(super) fn typography(s: &mut Session, p: &Value) -> Result<Value> {
         }
         if let Some(o) = optical {
             para.props.optical_margin = o;
+        }
+        if let Some(g) = snap {
+            para.props.snap_to_grid = g;
         }
     })?;
     Ok(state(&current_para(s)))
@@ -67,7 +72,7 @@ mod tests {
     fn sets_reports_clears_and_undoes_typography() {
         let mut s = session_with_body_selected();
         let r = s.execute("format.typography", &json!({"composer": "paragraph", "hyphenate": true, "opticalMargin": true})).expect("set");
-        assert_eq!(r, json!({"composer": "paragraph", "hyphenate": true, "opticalMargin": true}));
+        assert_eq!(r, json!({"composer": "paragraph", "hyphenate": true, "opticalMargin": true, "snapToGrid": false}));
         let pp = props(&s);
         assert_eq!((pp.composer, pp.hyphenate, pp.optical_margin), (Some(Composer::Paragraph), Some(true), Some(true)));
         // With no keys it is a query.
