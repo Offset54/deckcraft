@@ -2347,3 +2347,19 @@ fn reflection_angles_and_skews_out_of_range_are_written_inside_the_schema() {
     let r = round(&p).slides.last().and_then(|sl| by_name(sl, "Reflected").effects.clone()).and_then(|fx| fx.reflection).expect("reflection");
     assert_eq!((r.st_pos, r.dir, r.fade_dir, r.kx, r.ky), (Some(100_000), Some(21_599_995), Some(0), Some(5_399_999), Some(-5_399_999)));
 }
+
+/// A deck without a presentation-wide default text style (LibreOffice writes no
+/// `p:defaultTextStyle`) keeps none after a save: the writer used to fill in the defaults, whose
+/// kerning made every text narrower on reopening (corpus deck 10, all slides).
+#[test]
+fn no_default_text_style_stays_none() {
+    let mut p = deckcraft_model::defaults::new_presentation(None);
+    p.default_text_style = Default::default();
+    let bytes = deckcraft_pptx::export(&p).unwrap();
+    let back = deckcraft_pptx::import(&bytes).unwrap();
+    assert!(back.default_text_style.is_empty(), "{:?}", back.default_text_style);
+    // A deck that has one still writes it.
+    let p = deckcraft_model::defaults::new_presentation(None);
+    let back = deckcraft_pptx::import(&deckcraft_pptx::export(&p).unwrap()).unwrap();
+    assert_eq!(back.default_text_style, p.default_text_style);
+}
