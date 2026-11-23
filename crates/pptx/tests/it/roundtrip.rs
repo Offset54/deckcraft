@@ -1248,6 +1248,59 @@ fn text_wrap_round_trips() {
 }
 
 #[test]
+fn column_formats_are_flattened_for_powerpoint_and_come_back_as_formats() {
+    use deckcraft_model::table::ColumnFormat;
+    use deckcraft_model::text::Align;
+    let mut p = defaults::new_presentation(None);
+    let first = p.slides[0].id;
+    let s = p.slide_mut(first).expect("slide");
+    let mut t = Table::new(3, 2, 300.0, 30.0);
+    for (r, v) in ["Amount", "12.5", "7"].iter().enumerate() {
+        if let Some(c) = t.cell_mut(r, 1) {
+            c.text = TextBody::from_text(v);
+        }
+    }
+    if let Some(c) = t.cell_mut(2, 1) {
+        c.text.paragraphs[0].props.align = Some(Align::Left);
+    }
+    t.col_formats = vec![ColumnFormat::default(), ColumnFormat { decimal: true, style: Some("caption".into()), ..Default::default() }];
+    t.header_style = Some("heading".into());
+    let original = t.clone();
+    s.shapes.push(Shape {
+        id: deckcraft_model::ShapeId(500),
+        xfrm: Some(Xfrm::new(10.0, 10.0, 300.0, 90.0)),
+        kind: deckcraft_model::ShapeKind::Table(t),
+        ..Default::default()
+    });
+    let bytes = deckcraft_pptx::export(&p).expect("export");
+    let mut z = zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("zip");
+    let mut xml = String::new();
+    std::io::Read::read_to_string(&mut z.by_name("ppt/slides/slide1.xml").expect("slide"), &mut xml).expect("xml");
+    assert!(
+        xml.contains(r#"<a:pPr algn="r">"#) || xml.contains(r#"<a:pPr algn="r"/>"#) || xml.contains(r#"algn="r""#),
+        "the decimal column is right-aligned for PowerPoint: {xml}"
+    );
+    assert!(xml.contains(r#"sz="1400""#), "the caption style's size is written: {xml}");
+    let q = round(&p);
+    let back = q.slides[0].shapes.iter().find_map(|sh| match &sh.kind {
+        deckcraft_model::ShapeKind::Table(t) => Some(t.clone()),
+        _ => None,
+    });
+    let back = back.expect("table");
+    assert_eq!(back.col_formats, original.col_formats);
+    assert_eq!(back.header_style, original.header_style);
+    for r in 0..3 {
+        for c in 0..2 {
+            assert_eq!(
+                back.cell(r, c).map(|x| &x.text.paragraphs),
+                original.cell(r, c).map(|x| &x.text.paragraphs),
+                "cell {r},{c} reads back as it was"
+            );
+        }
+    }
+}
+
+#[test]
 fn a_table_fill_round_trips() {
     let mut p = defaults::new_presentation(None);
     let mut t = Table::new(2, 2, 200.0, 40.0);

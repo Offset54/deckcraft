@@ -42,6 +42,8 @@ pub const EXT_SC_GRID: &str = "{5B8E2D7A-91C4-4E36-A0F1-3D6C8B72E954}";
 pub const EXT_SC_THREAD: &str = "{2F6A9C14-7D3B-4E85-B1C9-0A4E6D8F3B27}";
 /// `p:cNvPr/a:extLst/a:ext/@uri` of a shape text wraps around (`sc:wrap/@margin`).
 pub const EXT_SC_WRAP: &str = "{8D41B7E2-6C95-4A3F-92D8-E15B07C4A6F9}";
+/// `a:tblPr/a:extLst/a:ext/@uri` of a table's column formats and header style (`sc:columns`).
+pub const EXT_SC_COLUMNS: &str = "{B3E9045C-2A71-4D8E-9F36-58C1A7D20E4B}";
 pub const EXT_SC_RUN: &str = "{9E1D3C51-6B7A-4F0E-9D52-2A8C4E7B1F36}";
 /// `p:presentation/p:extLst/p:ext/@uri` of the deck's text styles (`sc:textStyles`, JSON text
 /// in the model's `.deckcraft` form, `deckcraft_model::text_style::to_json`).

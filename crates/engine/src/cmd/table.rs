@@ -145,7 +145,111 @@ pub fn specs() -> Vec<CommandSpec> {
             erase_line
         ),
         cmd!(noundo "table.selectCells", "Select Cells", [], None, "{from: [r,c], to: [r,c], id?}", has_selection, select_cells),
+        cmd!(
+            "table.columnFormat",
+            "Column Format",
+            ["Table Layout", "Alignment"],
+            None,
+            "{col?: index (default: the selected cell's column), align?: left|center|right|justify or null, decimal?: bool (numbers line up on their decimal point), style?: paragraph style id or null (style.list), id?} — for the column's cells below the header row; a cell's own settings win → the column's {align, decimal, style}",
+            has_selection,
+            column_format
+        ),
+        cmd!(
+            "table.headerStyle",
+            "Header Row Style",
+            ["Table Design", "Table Style Options"],
+            None,
+            "{style: paragraph style id or null, id?} — the paragraph style of the header row's cells (with Header Row on)",
+            has_selection,
+            header_style
+        ),
     ]
+}
+
+fn paragraph_style_param(s: &Session, p: &Value, cmd: &str) -> Result<Option<Option<String>>> {
+    match p.get("style") {
+        None => Ok(None),
+        Some(Value::Null) => Ok(Some(None)),
+        Some(v) => {
+            let id = v.as_str().ok_or_else(|| bad(cmd, "`style` must be a style id or null"))?;
+            match s.doc()?.doc.text_style(id) {
+                Some(st) if st.kind == deckcraft_model::text_style::TextStyleKind::Paragraph => Ok(Some(Some(id.to_string()))),
+                Some(_) => Err(bad(cmd, format!("`{id}` is a character style"))),
+                None => Err(bad(cmd, format!("no style `{id}` (see style.list)"))),
+            }
+        }
+    }
+}
+
+fn column_format(s: &mut Session, p: &Value) -> Result<Value> {
+    const CMD: &str = "table.columnFormat";
+    use deckcraft_model::text::Align;
+    let (_, col) = at(s, p, CMD)?;
+    let align = match p.get("align") {
+        None => None,
+        Some(Value::Null) => Some(None),
+        Some(v) => Some(Some(match v.as_str() {
+            Some("left") => Align::Left,
+            Some("center") => Align::Center,
+            Some("right") => Align::Right,
+            Some("justify") => Align::Justify,
+            _ => return Err(bad(CMD, "`align` must be left, center, right, justify or null")),
+        })),
+    };
+    let decimal = match p.get("decimal") {
+        None => None,
+        Some(v) => Some(v.as_bool().ok_or_else(|| bad(CMD, "`decimal` must be a bool"))?),
+    };
+    let style = paragraph_style_param(s, p, CMD)?;
+    if align.is_none() && decimal.is_none() && style.is_none() {
+        return Err(bad(CMD, "give align, decimal or style"));
+    }
+    with_table(s, p, CMD, move |t| {
+        if col >= t.cols.len() {
+            return Err(bad(CMD, format!("no column {col}")));
+        }
+        if t.col_formats.len() <= col {
+            t.col_formats.resize_with(col + 1, Default::default);
+        }
+        if let Some(f) = t.col_formats.get_mut(col) {
+            if let Some(a) = align {
+                f.align = a;
+            }
+            if let Some(d) = decimal {
+                f.decimal = d;
+            }
+            if let Some(st) = &style {
+                f.style.clone_from(st);
+            }
+        }
+        Ok(())
+    })?;
+    let f = current_table(s, p).and_then(|t| t.col_formats.get(col).cloned()).unwrap_or_default();
+    Ok(json!({"align": f.align.map(|a| a.xml()), "decimal": f.decimal, "style": f.style}))
+}
+
+fn header_style(s: &mut Session, p: &Value) -> Result<Value> {
+    const CMD: &str = "table.headerStyle";
+    let style = paragraph_style_param(s, p, CMD)?.ok_or_else(|| bad(CMD, "missing `style`"))?;
+    with_table(s, p, CMD, move |t| {
+        t.header_style.clone_from(&style);
+        Ok(())
+    })
+}
+
+/// The table a table command acts on, as it is now.
+fn current_table(s: &Session, p: &Value) -> Option<Table> {
+    let st = s.doc().ok()?;
+    let id = id_param(p, "id", "table")
+        .ok()
+        .flatten()
+        .or_else(|| st.selection.text.as_ref().filter(|t| t.cell.is_some()).map(|t| t.shape))
+        .or(st.selection.cells.map(|c| c.0))
+        .or_else(|| st.selection.shapes.first().copied())?;
+    match &st.shape(id)?.kind {
+        ShapeKind::Table(t) => Some(t.clone()),
+        _ => None,
+    }
 }
 
 /// Narrowest a column gets when its border is dragged (points).
@@ -810,3 +914,7 @@ fn erase_line(s: &mut Session, p: &Value) -> Result<Value> {
         if crate::drawtable::erase_at(t, q, tol) { Ok(()) } else { Err(bad("table.eraseLine", "no border to erase there")) }
     })
 }
+
+#[cfg(test)]
+#[path = "table_format_tests.rs"]
+mod format_tests;

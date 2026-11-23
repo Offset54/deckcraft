@@ -217,6 +217,7 @@ pub(super) fn table_layout(app: &mut SlideApp, ui: &mut Ui) {
                 toggle(app, ui, Icon::AlignLeft, "Align Left", "format.alignLeft", false);
                 toggle(app, ui, Icon::AlignCenter, "Center", "format.alignCenter", false);
                 toggle(app, ui, Icon::AlignRight, "Align Right", "format.alignRight", false);
+                column_menu(app, ui);
             });
             ui.horizontal(|ui| {
                 for (l, a) in [("Top", "top"), ("Center", "middle"), ("Bottom", "bottom")] {
@@ -236,4 +237,58 @@ pub(super) fn table_layout(app: &mut SlideApp, ui: &mut Ui) {
         });
     });
     arrange_group(app, ui);
+}
+
+/// Table Layout › Column (`table.columnFormat`, `table.headerStyle`): the selected cell's
+/// column's alignment, decimal alignment and paragraph style, and the header row's style.
+fn column_menu(app: &mut SlideApp, ui: &mut Ui) {
+    let styles: Vec<(String, String)> = app
+        .session
+        .active()
+        .map(|d| {
+            d.doc
+                .all_text_styles()
+                .into_iter()
+                .filter(|s| s.kind == deckcraft_model::text_style::TextStyleKind::Paragraph)
+                .map(|s| (s.id, s.name))
+                .collect()
+        })
+        .unwrap_or_default();
+    ui.menu_button("Column", |ui| {
+        for (l, a) in [("Align Column Left", "left"), ("Center Column", "center"), ("Align Column Right", "right")] {
+            if ui.button(l).clicked() {
+                run(app, "table.columnFormat", json!({"align": a, "decimal": false}));
+                ui.close();
+            }
+        }
+        if ui.button("Align on Decimal Point").on_hover_text("Numbers in the column line up on their decimal point").clicked() {
+            run(app, "table.columnFormat", json!({"decimal": true}));
+            ui.close();
+        }
+        ui.separator();
+        ui.menu_button("Column Style", |ui| {
+            if ui.button("None").clicked() {
+                run(app, "table.columnFormat", json!({"style": null}));
+                ui.close();
+            }
+            for (id, name) in &styles {
+                if ui.button(name).clicked() {
+                    run(app, "table.columnFormat", json!({"style": id}));
+                    ui.close();
+                }
+            }
+        });
+        ui.menu_button("Header Row Style", |ui| {
+            if ui.button("None").clicked() {
+                run(app, "table.headerStyle", json!({"style": null}));
+                ui.close();
+            }
+            for (id, name) in &styles {
+                if ui.button(name).clicked() {
+                    run(app, "table.headerStyle", json!({"style": id}));
+                    ui.close();
+                }
+            }
+        });
+    });
 }

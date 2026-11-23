@@ -63,6 +63,80 @@ pub struct Table {
     /// `a:tblPr` fill: a fill behind the whole table (over the style's own background).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub background: Option<Fill>,
+    /// Per column (SlideCraft): alignment, decimal alignment and a paragraph style for the
+    /// column's cells below the header row. Shorter than `cols` where later columns have none.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub col_formats: Vec<ColumnFormat>,
+    /// Paragraph style of the header row's cells when `first_row` is on (SlideCraft).
+    #[serde(skip_serializing_if = "Option::is_none", deserialize_with = "crate::text_style::bounded_id")]
+    pub header_style: Option<String>,
+}
+
+/// How a column's cells are set (below the header row).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct ColumnFormat {
+    /// Paragraph alignment; a cell's own alignment wins.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub align: Option<crate::text::Align>,
+    /// Numbers line up on their decimal point (right-aligned, padded by their missing digits).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub decimal: bool,
+    /// Paragraph style id ([`crate::text_style`]) of the column's cells.
+    #[serde(skip_serializing_if = "Option::is_none", deserialize_with = "crate::text_style::bounded_id")]
+    pub style: Option<String>,
+}
+
+impl ColumnFormat {
+    pub fn is_empty(&self) -> bool {
+        *self == ColumnFormat::default()
+    }
+}
+
+/// [`crate::text::ParaProps::column_derived`]: the alignment came from the column format.
+pub const DERIVED_ALIGN: u8 = 1;
+/// [`crate::text::ParaProps::column_derived`]: the paragraph style came from the column format
+/// or the header style.
+pub const DERIVED_STYLE: u8 = 2;
+
+impl Table {
+    /// Has column formats or a header style.
+    pub fn has_column_formats(&self) -> bool {
+        self.header_style.is_some() || self.col_formats.iter().any(|f| !f.is_empty())
+    }
+
+    /// The table with its column formats and header style written onto the cells' paragraphs
+    /// (for a format without them): a column's alignment (right for a decimal column) and
+    /// paragraph style where a paragraph has none, each marked in `column_derived`. `None` when
+    /// there are none. Decimal padding needs measured text, so it is left out.
+    pub fn with_column_formats(&self) -> Option<Table> {
+        if !self.has_column_formats() {
+            return None;
+        }
+        let mut t = self.clone();
+        let first_row = t.first_row;
+        let header = t.header_style.clone();
+        let formats = t.col_formats.clone();
+        for (r, row) in t.rows.iter_mut().enumerate() {
+            for (c, cell) in row.cells.iter_mut().enumerate() {
+                let is_header = r == 0 && first_row;
+                let fmt = if is_header { None } else { formats.get(c) };
+                let style = if is_header { header.clone() } else { fmt.and_then(|f| f.style.clone()) };
+                let align = fmt.and_then(|f| if f.decimal { Some(crate::text::Align::Right) } else { f.align });
+                for p in &mut cell.text.paragraphs {
+                    if p.props.style.is_none() && style.is_some() {
+                        p.props.style.clone_from(&style);
+                        p.props.column_derived |= DERIVED_STYLE;
+                    }
+                    if p.props.align.is_none() && align.is_some() {
+                        p.props.align = align;
+                        p.props.column_derived |= DERIVED_ALIGN;
+                    }
+                }
+            }
+        }
+        Some(t)
+    }
 }
 
 impl Default for Table {
@@ -79,6 +153,8 @@ impl Default for Table {
             band_col: false,
             rtl: None,
             background: None,
+            col_formats: vec![],
+            header_style: None,
         }
     }
 }
@@ -126,6 +202,11 @@ impl Table {
         let merges = self.merges();
         let w = self.cols.get(at.saturating_sub(1)).copied().unwrap_or(80.0);
         self.cols.insert(at, w);
+        if at < self.col_formats.len() {
+            // A new column takes the format of the one it is inserted after, as its width.
+            let f = self.col_formats.get(at.saturating_sub(1)).cloned().unwrap_or_default();
+            self.col_formats.insert(at, f);
+        }
         for r in &mut self.rows {
             let i = at.min(r.cells.len());
             r.cells.insert(i, Cell::new(""));
@@ -161,6 +242,9 @@ impl Table {
             }
         }
         self.cols.remove(at);
+        if at < self.col_formats.len() {
+            self.col_formats.remove(at);
+        }
         for r in &mut self.rows {
             if at < r.cells.len() {
                 r.cells.remove(at);
@@ -304,6 +388,10 @@ impl Table {
     /// Make every row have exactly `cols.len()` cells (repair after loading).
     pub fn normalize(&mut self) {
         let n = self.cols.len();
+        self.col_formats.truncate(n);
+        while self.col_formats.last().is_some_and(ColumnFormat::is_empty) {
+            self.col_formats.pop();
+        }
         for r in &mut self.rows {
             r.cells.resize_with(n, || Cell::new(""));
             for c in &mut r.cells {

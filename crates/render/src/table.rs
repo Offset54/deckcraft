@@ -299,8 +299,75 @@ pub fn cell_body_with_def(rctx: &Ctx, def: Option<&TableStyleDef>, t: &Table, r:
             }
         }
     }
+    column_format(rctx, t, r, c, &mut body);
     body
 }
+
+/// The part of a cell paragraph from its decimal point ('.') on: the point and the digits after
+/// it; empty for a whole number or no number.
+fn fraction(text: &str) -> &str {
+    let t = text.trim_end();
+    t.rfind('.').filter(|&i| t[i + 1..].chars().all(|c| c.is_ascii_digit())).map_or("", |i| &t[i..])
+}
+
+/// Width of `para`'s fraction ([`fraction`]) in its first run's resolved font, in points.
+fn fraction_width(rctx: &Ctx, para: &deckcraft_model::text::Paragraph) -> f64 {
+    let text = para.text();
+    let frac = fraction(&text);
+    if frac.is_empty() {
+        return 0.0;
+    }
+    let tmp = Shape::table_cell(TextBody { paragraphs: vec![para.clone()], ..Default::default() });
+    let run = para.runs.first().map(|r| r.props.clone()).unwrap_or_default();
+    let rp = deckcraft_model::resolve::run(rctx, &tmp, para, &run);
+    let family = deckcraft_model::resolve::font_family(rctx, &rp);
+    let face = deckcraft_fonts::FontDb::global().document_face(&family, if rp.bold == Some(true) { "Bold" } else { "Regular" });
+    let w = deckcraft_text::text_width(&face, rp.size.unwrap_or(18.0), frac);
+    if w.is_finite() { w.max(0.0) } else { 0.0 }
+}
+
+/// The column's format (alignment, paragraph style, decimal alignment) and the header row's
+/// paragraph style, on cell (`r`, `c`)'s text. A paragraph's own settings win.
+fn column_format(rctx: &Ctx, t: &Table, r: usize, c: usize, body: &mut TextBody) {
+    let header = r == 0 && t.first_row;
+    let fmt = if header { None } else { t.col_formats.get(c) };
+    let style = if header { t.header_style.clone() } else { fmt.and_then(|f| f.style.clone()) };
+    for p in &mut body.paragraphs {
+        if p.props.style.is_none() {
+            p.props.style.clone_from(&style);
+        }
+        if let Some(a) = fmt.and_then(|f| f.align)
+            && p.props.align.is_none()
+        {
+            p.props.align = Some(a);
+        }
+    }
+    if !fmt.is_some_and(|f| f.decimal) {
+        return;
+    }
+    // Decimal points line up: every paragraph is right-aligned and padded on the right by how
+    // much narrower its fraction is than the column's widest.
+    let first = usize::from(t.first_row);
+    let widest = t
+        .rows
+        .iter()
+        .skip(first)
+        .take(MAX_DECIMAL_ROWS)
+        .filter_map(|row| row.cells.get(c))
+        .flat_map(|cell| cell.text.paragraphs.iter())
+        .map(|p| fraction_width(rctx, p))
+        .fold(0.0, f64::max);
+    for p in &mut body.paragraphs {
+        let pad = widest - fraction_width(rctx, p);
+        p.props.align = Some(deckcraft_model::text::Align::Right);
+        if pad.is_finite() && pad > 0.0 {
+            p.props.margin_right = Some(p.props.margin_right.unwrap_or(0.0) + pad);
+        }
+    }
+}
+
+/// Rows a decimal column is scanned over for its longest fraction (hostile tables).
+const MAX_DECIMAL_ROWS: usize = 2000;
 
 /// Heights the rows are drawn at. A stored row height (`a:tr/@h`) is a minimum: the row grows so the
 /// text of each of its cells fits, as in PowerPoint. Files from pandoc or python-pptx store 0.
@@ -484,4 +551,89 @@ pub fn draw(
         let _ = peniko::Fill::NonZero;
     }
     covered
+}
+
+#[cfg(test)]
+mod column_format_tests {
+    use deckcraft_model::table::{ColumnFormat, Table};
+    use deckcraft_model::text::{Align, TextBody};
+    use deckcraft_model::{LayoutType, Presentation, defaults};
+    use deckcraft_text::{NoFields, Opts};
+
+    use super::*;
+
+    /// The x where each body cell's number puts its decimal point (after the last digit for a
+    /// whole number), laid out as the table draws it.
+    fn points(t: &Table, p: &Presentation) -> Vec<f64> {
+        let slide = p.slides[0].clone();
+        let ctx = Ctx::for_slide(p, &slide).expect("ctx");
+        let hs = row_heights(&ctx, t, &NoFields);
+        let rects = cell_rects(t, &hs);
+        let mut out = vec![];
+        for (r, c, rect) in rects.into_iter().filter(|(r, c, _)| *r > 0 && *c == 1) {
+            let cell = t.cell(r, c).expect("cell");
+            let body = cell_body(&ctx, t, r, c, cell);
+            let sh = Shape::table_cell(body.clone());
+            let l = deckcraft_text::layout(&ctx, &sh, &body, &Opts { rect, fields: &NoFields, prompt_color: None, no_shrink: true });
+            let text = body.paragraphs[0].text();
+            let at = text.find('.').map(|b| text[..b].chars().count()).unwrap_or(text.chars().count());
+            out.push(l.lines[0].caret_x[at]);
+        }
+        out
+    }
+
+    fn table() -> (Table, Presentation) {
+        let mut p = Presentation::default();
+        let lay = defaults::layout_of_kind(&p, LayoutType::Blank).expect("layout");
+        let s = defaults::new_slide(&mut p, lay).expect("slide");
+        p.slides = vec![std::sync::Arc::new(s)];
+        let mut t = Table::new(5, 2, 400.0, 30.0);
+        for (r, v) in ["Amount", "12.5", "1,234.75", "7", "0.125"].iter().enumerate() {
+            if let Some(cell) = t.cell_mut(r, 1) {
+                cell.text = TextBody::from_text(v);
+            }
+        }
+        (t, p)
+    }
+
+    #[test]
+    fn a_decimal_column_lines_its_numbers_up_on_the_point() {
+        let (mut t, p) = table();
+        let ragged = points(&t, &p);
+        assert!(ragged.iter().any(|x| (x - ragged[0]).abs() > 2.0), "unformatted, the points differ: {ragged:?}");
+        t.col_formats = vec![ColumnFormat::default(), ColumnFormat { decimal: true, ..Default::default() }];
+        let lined = points(&t, &p);
+        for x in &lined {
+            assert!((x - lined[0]).abs() < 0.75, "decimal points line up: {lined:?}");
+        }
+        // The header keeps its own setting.
+        let slide = p.slides[0].clone();
+        let ctx = Ctx::for_slide(&p, &slide).expect("ctx");
+        let head = cell_body(&ctx, &t, 0, 1, t.cell(0, 1).expect("cell"));
+        assert_eq!(head.paragraphs[0].props.align, None);
+    }
+
+    #[test]
+    fn column_and_header_styles_and_alignment_apply_unless_the_cell_says_otherwise() {
+        let (mut t, p) = table();
+        t.col_formats = vec![ColumnFormat { align: Some(Align::Center), style: Some("caption".into()), ..Default::default() }];
+        t.header_style = Some("heading".into());
+        if let Some(cell) = t.cell_mut(2, 0) {
+            cell.text.paragraphs[0].props.align = Some(Align::Left);
+        }
+        let slide = p.slides[0].clone();
+        let ctx = Ctx::for_slide(&p, &slide).expect("ctx");
+        let body = |r: usize| cell_body(&ctx, &t, r, 0, t.cell(r, 0).expect("cell")).paragraphs[0].props.clone();
+        assert_eq!((body(1).align, body(1).style.as_deref()), (Some(Align::Center), Some("caption")));
+        assert_eq!(body(2).align, Some(Align::Left), "the cell's own alignment wins");
+        assert_eq!(body(0).style.as_deref(), Some("heading"));
+        // Columns past the formats, and a removed column, behave.
+        let mut u = t.clone();
+        u.insert_col(0);
+        assert_eq!(u.col_formats.len(), 2);
+        u.delete_col(0);
+        u.delete_col(0);
+        u.normalize();
+        assert!(u.col_formats.is_empty());
+    }
 }

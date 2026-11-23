@@ -764,6 +764,18 @@ fn table(w: &mut W, x: &mut Exp, o: &mut Out, t: &Table) {
         dml::fill(w, x, o, f);
     }
     w.elt("a:tableStyleId", &guid);
+    // SlideCraft's column formats and header style; the cells carry them flattened as well.
+    if t.has_column_formats() {
+        w.open0("a:extLst");
+        w.open("a:ext", A::new().a("uri", crate::opc::EXT_SC_COLUMNS));
+        w.open("sc:columns", A::new().a("xmlns:sc", crate::opc::NS_SC).o("header", t.header_style.as_deref()));
+        for (i, f) in t.col_formats.iter().enumerate().filter(|(_, f)| !f.is_empty()) {
+            w.empty("sc:col", A::new().a("i", i).o("align", f.align.map(|a| a.xml())).t("decimal", f.decimal).o("style", f.style.as_deref()));
+        }
+        w.close("sc:columns");
+        w.close("a:ext");
+        w.close("a:extLst");
+    }
     w.close("a:tblPr");
     w.open0("a:tblGrid");
     for c in &t.cols {

@@ -449,6 +449,7 @@ fn typography_ext(ext_lst: &El, pp: &mut ParaProps) {
     pp.hyphenate = t.bool("hyphenate");
     pp.optical_margin = t.bool("opticalMargin");
     pp.snap_to_grid = t.bool("snapToGrid");
+    pp.column_derived = t.u32("colDerived").map_or(0, |v| (v & 3) as u8);
 }
 
 /// `a:pPr` / `a:lvlNpPr` → (level, paragraph props, default run props).

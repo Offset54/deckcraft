@@ -894,6 +894,26 @@ fn table(imp: &mut Imp, part: &Part, tbl: &El) -> Table {
         t.band_row = pr.bool("bandRow").unwrap_or(false);
         t.band_col = pr.bool("bandCol").unwrap_or(false);
         t.rtl = pr.bool("rtl");
+        // SlideCraft's column formats and header style.
+        if let Some(cols) = pr
+            .child("extLst")
+            .and_then(|l| l.children_named("ext").find(|e| e.attr("uri") == Some(crate::opc::EXT_SC_COLUMNS)))
+            .and_then(|e| e.child("columns"))
+        {
+            let id = |v: Option<&str>| v.filter(|v| deckcraft_model::text_style::valid_id(v)).map(String::from);
+            t.header_style = id(cols.attr("header"));
+            for c in cols.children_named("col").take(1000) {
+                let Some(i) = c.u32("i").map(|i| i as usize).filter(|i| *i < 1000) else { continue };
+                if t.col_formats.len() <= i {
+                    t.col_formats.resize_with(i + 1, Default::default);
+                }
+                if let Some(f) = t.col_formats.get_mut(i) {
+                    f.align = c.attr("align").and_then(deckcraft_model::text::Align::from_xml);
+                    f.decimal = c.bool("decimal").unwrap_or(false);
+                    f.style = id(c.attr("style"));
+                }
+            }
+        }
         if let Some(id) = pr.child("tableStyleId").map(|e| e.text()) {
             // A style the file defines is drawn from its definition (by its GUID).
             // DeckCraft's own styles (written with GUIDs derived from their ids) map back to them.

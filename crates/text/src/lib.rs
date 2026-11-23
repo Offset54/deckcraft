@@ -51,6 +51,11 @@ use breaking::{LINE_PITCH, break_opportunities, measure_str};
 #[cfg(test)]
 pub(crate) use layout::LAYOUT_PASSES;
 pub use layout::layout;
+
+/// Width of `s` shaped alone in `face` at `size` points (kerning and shaping included).
+pub fn text_width(face: &FontFace, size: f64, s: &str) -> f64 {
+    breaking::measure_str(face, size, s).0
+}
 #[cfg(test)]
 use layout::layout_scaled;
 pub use run::{Dash, Deco, DecoLine, GlyphRun, RunEffects, TextShadow, UPRIGHT_CENTRE};

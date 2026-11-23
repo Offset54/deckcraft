@@ -2675,3 +2675,30 @@ fn wrap_text_in_the_arrange_group_wraps_the_selection() {
         let _ = img.save(std::path::Path::new(&dir).join("wrap.png"));
     }
 }
+
+/// Table Layout › Column › Align on Decimal Point formats the selected cell's column.
+#[test]
+fn the_column_menu_aligns_a_table_column_on_its_decimal_point() {
+    let _gpu = crate::gpu_lock::gpu_lock();
+    let mut harness = egui_kittest::Harness::builder().with_size(egui::vec2(1800.0, 900.0)).build_ui_state(
+        |ui, app: &mut SlideApp| {
+            app.logic(ui.ctx());
+            app.ui(ui);
+        },
+        SlideApp::new(Session::with_new(), Services::default()),
+    );
+    let s = &mut harness.state_mut().session;
+    s.execute("slide.new", &json!({"layout": "blank"})).unwrap();
+    let id = s.execute("insert.table", &json!({"rows": 4, "cols": 2})).unwrap()["id"].as_u64().unwrap();
+    s.execute("text.edit", &json!({"id": id, "cell": [1, 1]})).unwrap();
+    harness.state_mut().ui.tab = "Layout".into();
+    harness.run_steps(3);
+    harness.get_by_label("Column").click();
+    harness.run_steps(2);
+    harness.get_by_label("Align on Decimal Point").click();
+    harness.run_steps(3);
+    let st = harness.state().session.active().unwrap();
+    let t = st.current_slide().and_then(|sl| sl.shapes.iter().find(|x| u64::from(x.id.0) == id)).map(|x| x.kind.clone());
+    let Some(deckcraft_model::ShapeKind::Table(t)) = t else { panic!("a table") };
+    assert!(t.col_formats.get(1).is_some_and(|f| f.decimal), "{:?}", t.col_formats);
+}

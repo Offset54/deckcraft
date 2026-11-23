@@ -75,6 +75,14 @@ pub fn valid_id(id: &str) -> bool {
     !id.is_empty() && id.len() <= MAX_STYLE_ID && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
 }
 
+/// Reads a style id, dropping one that is not [`valid_id`] (hostile files).
+pub fn bounded_id<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Option::<String>::deserialize(deserializer).map(|id| id.filter(|v| valid_id(v)))
+}
+
 /// Reads a deck's style list, keeping at most [`MAX_STYLES`] valid ones and the first of each id.
 pub fn bounded_styles<'de, D>(deserializer: D) -> Result<Vec<TextStyle>, D::Error>
 where
@@ -322,6 +330,9 @@ fn flatten_shapes(ctx: &crate::resolve::Ctx, shapes: &mut [Shape], depth: usize)
         match &mut slot.kind {
             ShapeKind::Group { children, .. } => flatten_shapes(ctx, children, depth + 1),
             ShapeKind::Table(t) => {
+                if let Some(derived) = t.with_column_formats() {
+                    *t = derived;
+                }
                 for c in t.rows.iter_mut().flat_map(|r| r.cells.iter_mut()) {
                     for p in &mut c.text.paragraphs {
                         if let Some(f) = flatten(ctx.pres, p, &|_| true) {
@@ -344,7 +355,9 @@ pub fn flatten_deck(pres: &Presentation) -> Option<Presentation> {
                 sh.text.as_ref().is_some_and(|t| t.paragraphs.iter().any(styled))
                     || match &sh.kind {
                         ShapeKind::Group { children, .. } => any_styled(children, depth + 1),
-                        ShapeKind::Table(t) => t.rows.iter().flat_map(|r| &r.cells).any(|c| c.text.paragraphs.iter().any(styled)),
+                        ShapeKind::Table(t) => {
+                            t.has_column_formats() || t.rows.iter().flat_map(|r| &r.cells).any(|c| c.text.paragraphs.iter().any(styled))
+                        }
                         _ => false,
                     }
             })
@@ -378,11 +391,15 @@ pub fn flatten_deck(pres: &Presentation) -> Option<Presentation> {
 /// removed, so later changes to a style show again.
 pub fn unflatten(pres: &Presentation, para: &mut Paragraph) {
     if !styled(para) {
+        clear_column_derived(para);
         return;
     }
     let ps = pres.paragraph_style_props(para.props.style.as_deref());
     if let Some((pp, _)) = &ps {
+        // `strip_equal` goes through serde, which skips the export-only marker: keep it.
+        let derived = para.props.column_derived;
         para.props = strip_equal(&para.props, pp);
+        para.props.column_derived = derived;
     }
     let pr = ps.as_ref().map(|(_, r)| r.clone());
     let snapshot = para.clone();
@@ -393,6 +410,18 @@ pub fn unflatten(pres: &Presentation, para: &mut Paragraph) {
     if pr.is_some() {
         let base = run_base(pres, &snapshot, &snapshot.end_props, pr.as_ref());
         para.end_props = strip_equal(&para.end_props, &base);
+    }
+    clear_column_derived(para);
+}
+
+/// Takes out what a table column format supplied ([`crate::Table::with_column_formats`]).
+fn clear_column_derived(para: &mut Paragraph) {
+    let d = std::mem::take(&mut para.props.column_derived);
+    if d & crate::table::DERIVED_ALIGN != 0 {
+        para.props.align = None;
+    }
+    if d & crate::table::DERIVED_STYLE != 0 {
+        para.props.style = None;
     }
 }
 

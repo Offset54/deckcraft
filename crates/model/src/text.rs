@@ -320,6 +320,11 @@ pub struct ParaProps {
     /// Lines sit on the slide's baseline grid ([`crate::BaselineGrid`]) when it has one.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub snap_to_grid: Option<bool>,
+    /// Export only, never saved natively: which settings here a table column format supplied
+    /// ([`crate::table::DERIVED_ALIGN`], [`crate::table::DERIVED_STYLE`]), so a reader can take
+    /// them back out. Not inherited.
+    #[serde(skip)]
+    pub column_derived: u8,
     /// Paragraph style id ([`crate::text_style`]). Not inherited: it applies to this paragraph
     /// only.
     #[serde(deserialize_with = "bounded_style_id", skip_serializing_if = "Option::is_none")]

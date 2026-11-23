@@ -652,7 +652,12 @@ pub fn ppr(w: &mut W, x: &mut Exp, o: &mut Out, tag: &str, level: Option<u8>, p:
 }
 
 fn has_typography(p: &ParaProps) -> bool {
-    p.composer.is_some() || p.hyphenate.is_some() || p.optical_margin.is_some() || p.style.is_some() || p.snap_to_grid.is_some()
+    p.composer.is_some()
+        || p.hyphenate.is_some()
+        || p.optical_margin.is_some()
+        || p.style.is_some()
+        || p.snap_to_grid.is_some()
+        || p.column_derived != 0
 }
 
 /// SlideCraft's composer, hyphenation and optical margin settings, which PowerPoint has no
@@ -671,7 +676,8 @@ fn typography_ext(w: &mut W, p: &ParaProps) {
             .o("composer", p.composer.map(|c| c.as_str()))
             .b("hyphenate", p.hyphenate)
             .b("opticalMargin", p.optical_margin)
-            .b("snapToGrid", p.snap_to_grid),
+            .b("snapToGrid", p.snap_to_grid)
+            .o("colDerived", (p.column_derived != 0).then_some(p.column_derived)),
     );
     w.close("a:ext");
     w.close("a:extLst");
