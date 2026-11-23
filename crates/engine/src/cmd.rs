@@ -27,6 +27,7 @@ pub mod slide;
 pub mod smartart;
 pub mod table;
 pub mod text;
+pub mod text_style;
 pub mod three_d;
 pub mod transition;
 pub mod zoom;
@@ -178,6 +179,7 @@ pub fn command_specs() -> &'static [CommandSpec] {
         v.extend(points::specs());
         v.extend(text::specs());
         v.extend(format::specs());
+        v.extend(text_style::specs());
         v.extend(design::specs());
         v.extend(ideas::specs());
         v.extend(transition::specs());

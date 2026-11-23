@@ -317,6 +317,10 @@ pub struct ParaProps {
     /// the text edge looks straight.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub optical_margin: Option<bool>,
+    /// Paragraph style id ([`crate::text_style`]). Not inherited: it applies to this paragraph
+    /// only.
+    #[serde(deserialize_with = "bounded_style_id", skip_serializing_if = "Option::is_none")]
+    pub style: Option<String>,
 }
 
 /// The line breaker for a paragraph.
@@ -563,6 +567,19 @@ pub struct RunProps {
     /// Spelling/grammar errors are not flagged.
     pub no_proof: Option<bool>,
     pub normalize_height: Option<bool>,
+    /// Character style id ([`crate::text_style`]). Not inherited: it applies to this run only.
+    #[serde(deserialize_with = "bounded_style_id", skip_serializing_if = "Option::is_none")]
+    pub style: Option<String>,
+}
+
+/// Style ids longer than this are cut (hostile files).
+pub const MAX_STYLE_ID: usize = 64;
+
+fn bounded_style_id<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Option::<String>::deserialize(deserializer).map(|id| id.map(|v| v.chars().take(MAX_STYLE_ID).collect()))
 }
 
 fn bounded_language<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>

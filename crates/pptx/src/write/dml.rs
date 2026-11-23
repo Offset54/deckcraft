@@ -652,7 +652,7 @@ pub fn ppr(w: &mut W, x: &mut Exp, o: &mut Out, tag: &str, level: Option<u8>, p:
 }
 
 fn has_typography(p: &ParaProps) -> bool {
-    p.composer.is_some() || p.hyphenate.is_some() || p.optical_margin.is_some()
+    p.composer.is_some() || p.hyphenate.is_some() || p.optical_margin.is_some() || p.style.is_some()
 }
 
 /// SlideCraft's composer, hyphenation and optical margin settings, which PowerPoint has no
@@ -667,6 +667,7 @@ fn typography_ext(w: &mut W, p: &ParaProps) {
         "sc:typography",
         A::new()
             .a("xmlns:sc", crate::opc::NS_SC)
+            .o("style", p.style.as_deref())
             .o("composer", p.composer.map(|c| c.as_str()))
             .b("hyphenate", p.hyphenate)
             .b("opticalMargin", p.optical_margin),
@@ -722,7 +723,8 @@ pub fn rpr(w: &mut W, x: &mut Exp, o: &mut Out, tag: &str, r: &RunProps) {
         || r.font_cs.is_some()
         || r.font_sym.is_some()
         || r.link.is_some()
-        || r.hover.is_some();
+        || r.hover.is_some()
+        || r.style.is_some();
     if !has_kids {
         w.empty(tag, a);
         return;
@@ -771,6 +773,14 @@ pub fn rpr(w: &mut W, x: &mut Exp, o: &mut Out, tag: &str, r: &RunProps) {
     // Schema order: hlinkClick, hlinkMouseOver.
     if let Some(h) = &r.hover {
         hyperlink(w, x, o, "a:hlinkMouseOver", h);
+    }
+    // SlideCraft's character style id; the style's settings are already written above.
+    if let Some(id) = &r.style {
+        w.open0("a:extLst");
+        w.open("a:ext", A::new().a("uri", crate::opc::EXT_SC_RUN));
+        w.empty("sc:run", A::new().a("xmlns:sc", crate::opc::NS_SC).a("style", id));
+        w.close("a:ext");
+        w.close("a:extLst");
     }
     w.close(tag);
 }

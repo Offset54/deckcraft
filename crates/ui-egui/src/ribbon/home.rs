@@ -391,8 +391,42 @@ fn paragraph_group(app: &mut SlideApp, ui: &mut Ui, st: &Value) {
                 if ui.add_enabled(en, egui::Button::new("Paragraph…").min_size(vec2(88.0, 22.0))).on_hover_text("Paragraph").clicked() {
                     run(app, "format.paragraphDialog", json!({}));
                 }
+                styles_menu(app, ui, st, en);
             });
         });
+    });
+}
+
+/// Paragraph and character styles (`style.apply`): the deck's styles by name, the current one
+/// ticked; choosing the ticked one again removes it.
+fn styles_menu(app: &mut SlideApp, ui: &mut Ui, st: &Value, en: bool) {
+    let styles = app.session.active().map(|d| d.doc.all_text_styles()).unwrap_or_default();
+    let cur_p = st.get("paragraphStyle").and_then(Value::as_str).map(String::from);
+    let cur_c = st.get("characterStyle").and_then(Value::as_str).map(String::from);
+    let current = cur_p.as_deref().and_then(|id| styles.iter().find(|s| s.id == id)).map(|s| s.name.clone());
+    let tip = match &current {
+        Some(n) => format!("Text Styles: {n}"),
+        None => "Text Styles".to_string(),
+    };
+    let r = icon_toggle(ui, Icon::QuickStyles, &tip, en, current.is_some());
+    egui::Popup::menu(&r).show(|ui| {
+        for (kind, cur, heading) in [
+            (deckcraft_model::text_style::TextStyleKind::Paragraph, &cur_p, "Paragraph Styles"),
+            (deckcraft_model::text_style::TextStyleKind::Character, &cur_c, "Character Styles"),
+        ] {
+            ui.label(egui::RichText::new(heading).small().weak());
+            for s in styles.iter().filter(|s| s.kind == kind) {
+                let on = cur.as_deref() == Some(s.id.as_str());
+                if ui.selectable_label(on, &s.name).clicked() {
+                    let p = if on { json!({"id": null, "kind": kind.as_str()}) } else { json!({"id": s.id}) };
+                    run(app, "style.apply", p);
+                }
+            }
+            ui.separator();
+        }
+        if ui.add_enabled(cur_p.is_some(), egui::Button::new("Update Style to Match Selection")).clicked() {
+            run(app, "style.matchSelection", json!({}));
+        }
     });
 }
 

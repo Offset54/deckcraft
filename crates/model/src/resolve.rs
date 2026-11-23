@@ -360,9 +360,25 @@ pub fn level_style(ctx: &Ctx, shape: &Shape, level: u8) -> LevelStyle {
 /// Fully resolved run properties for `run` in paragraph `para` (explicit → paragraph style).
 pub fn run(ctx: &Ctx, shape: &Shape, para: &crate::text::Paragraph, run: &RunProps) -> RunProps {
     let mut r = run.clone();
-    // Paragraph `defRPr` fills gaps in the run, and the list style (including the layout
-    // placeholder this shape inherits from) fills whatever is still unset.
+    // The run's character style, then the paragraph `defRPr`, then the paragraph style's text
+    // settings fill gaps in the run; the list style (including the layout placeholder this shape
+    // inherits from) fills whatever is still unset.
+    let cs = ctx.pres.character_style_props(run.style.as_deref());
+    let ps = ctx.pres.paragraph_style_props(para.props.style.as_deref()).map(|(_, r)| r);
+    if let Some(cs) = &cs {
+        r.inherit(cs);
+    }
     r.inherit(&para.def_props);
+    if let Some(ps) = &ps {
+        r.inherit(ps);
+    }
+    // A style's colour that would not read on the shape's own fill gives way to the shape's text
+    // colour: a coloured style must not make text vanish.
+    let style_fill = run.fill.is_none()
+        && (cs.as_ref().is_some_and(|c| c.fill.is_some()) || (para.def_props.fill.is_none() && ps.as_ref().is_some_and(|p| p.fill.is_some())));
+    if style_fill && unreadable_on(ctx, shape, r.fill.as_ref()) {
+        r.fill = None;
+    }
     let lvl = level_style(ctx, shape, para.level);
     r.inherit(&lvl.run);
     // Hyperlinked text is drawn in the theme's hyperlink colour and underlined, as in PowerPoint,
@@ -382,8 +398,24 @@ pub fn run(ctx: &Ctx, shape: &Shape, para: &crate::text::Paragraph, run: &RunPro
     r
 }
 
+/// Text contrast below this against the shape's fill counts as unreadable (WCAG's large-text
+/// minimum; styles that colour text are display sizes).
+pub const MIN_STYLE_CONTRAST: f64 = 3.0;
+
+/// `text` (a solid text fill) on the shape's solid fill has less contrast than
+/// [`MIN_STYLE_CONTRAST`]. Other fills (none, gradients, pictures) are not judged.
+pub fn unreadable_on(ctx: &Ctx, shape: &Shape, text: Option<&Fill>) -> bool {
+    let Some(Fill::Solid { color: fg }) = text else { return false };
+    let (bg, ph) = fill(ctx, shape);
+    let Some(Fill::Solid { color: bg }) = bg else { return false };
+    ctx.color(fg, None).contrast(ctx.color(&bg, ph)) < MIN_STYLE_CONTRAST
+}
+
 pub fn para(ctx: &Ctx, shape: &Shape, para: &crate::text::Paragraph) -> ParaProps {
     let mut p = para.props.clone();
+    if let Some((ps, _)) = ctx.pres.paragraph_style_props(para.props.style.as_deref()) {
+        p.inherit(&ps);
+    }
     let lvl = level_style(ctx, shape, para.level);
     p.inherit(&lvl.para);
     p

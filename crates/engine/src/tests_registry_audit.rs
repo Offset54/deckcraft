@@ -26,6 +26,8 @@ const QUERIES: &[&str] = &[
     "shape.points",
     "shape.sites",
     "smartArt.nodes",
+    // The deck's paragraph and character styles and the caret's (Phase 2).
+    "style.list",
     "text.get",
     "text.find",
     "format.state",

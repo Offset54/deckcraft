@@ -35,6 +35,11 @@ pub const NS_P188: &str = "http://schemas.microsoft.com/office/powerpoint/2018/8
 pub const NS_SC: &str = "https://github.com/Offset54/deckcraft/ns/slidecraft/2026/main";
 /// `a:pPr/a:extLst/a:ext/@uri` of the paragraph typography extension (`sc:typography`).
 pub const EXT_SC_TYPOGRAPHY: &str = "{60126004-4CC5-4FBA-82AA-1248CB7A995C}";
+/// `a:rPr/a:extLst/a:ext/@uri` of a run's character style (`sc:run/@style`).
+pub const EXT_SC_RUN: &str = "{9E1D3C51-6B7A-4F0E-9D52-2A8C4E7B1F36}";
+/// `p:presentation/p:extLst/p:ext/@uri` of the deck's text styles (`sc:textStyles`, JSON text
+/// in the model's `.deckcraft` form, `deckcraft_model::text_style::to_json`).
+pub const EXT_SC_TEXT_STYLES: &str = "{C4A7F2E8-3B5D-4A19-8E6C-71D0B9F45A23}";
 
 pub const RT_BASE: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/";
 pub const RT_MEDIA: &str = "http://schemas.microsoft.com/office/2007/relationships/media";

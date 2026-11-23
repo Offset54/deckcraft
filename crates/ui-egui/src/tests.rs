@@ -2563,3 +2563,26 @@ fn line_spacing_menu_turns_on_the_paragraph_composer() {
     assert_eq!(para.composer, Some(deckcraft_model::text::Composer::Paragraph));
     assert_eq!(st.history.undo.last().map(|h| h.label.as_str()), Some("Typography"));
 }
+
+/// Home › Paragraph › Styles applies a paragraph style by name; the button then shows it.
+#[test]
+fn the_styles_menu_applies_a_paragraph_style() {
+    let _gpu = crate::gpu_lock::gpu_lock();
+    let mut harness = canvas_harness();
+    harness.state_mut().session.execute("shape.insert", &json!({"preset": "rect", "rect": [100.0, 100.0, 500.0, 300.0], "text": "42%"})).unwrap();
+    harness.run_steps(2);
+    harness.get_by_label("Text Styles").click();
+    harness.run_steps(2);
+    if let (Ok(dir), Ok(img)) = (std::env::var("SLIDECRAFT_UI_SHOTS"), harness.render()) {
+        let _ = img.save(std::path::Path::new(&dir).join("styles-menu.png"));
+    }
+    harness.get_by_label("Big Number").click();
+    harness.run_steps(3);
+    let st = harness.state().session.active().unwrap();
+    let para = st.selected_shapes().first().and_then(|sh| sh.text.as_ref()).and_then(|t| t.paragraphs.first()).cloned().unwrap();
+    assert_eq!(para.props.style.as_deref(), Some("bigNumber"));
+    assert!(harness.query_by_label("Text Styles: Big Number").is_some(), "the button names the current style");
+    if let (Ok(dir), Ok(img)) = (std::env::var("SLIDECRAFT_UI_SHOTS"), harness.render()) {
+        let _ = img.save(std::path::Path::new(&dir).join("styles-applied.png"));
+    }
+}

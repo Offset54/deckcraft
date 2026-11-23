@@ -19,6 +19,7 @@ pub mod resolve;
 pub mod style;
 pub mod table;
 pub mod text;
+pub mod text_style;
 pub mod theme;
 mod trendline;
 pub mod words;
@@ -1001,6 +1002,10 @@ pub struct Presentation {
     /// Table styles defined in the file (`ppt/tableStyles.xml`).
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub table_styles: Vec<table::TableStyleDef>,
+    /// Paragraph and character styles the deck defines or changes; the built-in ones
+    /// ([`text_style::builtin`]) apply where this has no entry of the same id.
+    #[serde(skip_serializing_if = "Vec::is_empty", deserialize_with = "text_style::bounded_styles")]
+    pub text_styles: Vec<text_style::TextStyle>,
     /// Add-in tags (`p:custDataLst` → `ppt/tags/tagN.xml`): name/value pairs kept for round trip.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<(String, String)>,

@@ -10,6 +10,7 @@ use deckcraft_model::text::{
     Action, Align, Anchor, AutoFit, BodyProps, Bullet, Caps, Composer, Hyperlink, LevelStyle, ListStyle, ParaProps, Paragraph, Run, RunKind,
     RunProps, Spacing, Strike, TabStop, TextBody, TextDir,
 };
+use deckcraft_model::text_style;
 
 use super::{Imp, Part};
 use crate::xml::El;
@@ -443,6 +444,7 @@ fn spacing(e: &El) -> Option<Spacing> {
 fn typography_ext(ext_lst: &El, pp: &mut ParaProps) {
     let ours = ext_lst.children_named("ext").find(|x| x.attr("uri") == Some(crate::opc::EXT_SC_TYPOGRAPHY));
     let Some(t) = ours.and_then(|x| x.child("typography")) else { return };
+    pp.style = t.attr("style").filter(|id| text_style::valid_id(id)).map(String::from);
     pp.composer = t.attr("composer").and_then(Composer::parse);
     pp.hyphenate = t.bool("hyphenate");
     pp.optical_margin = t.bool("opticalMargin");
@@ -618,6 +620,10 @@ pub fn rpr(imp: &mut Imp, part: &Part, r: &El) -> RunProps {
             "sym" => p.font_sym = typeface(e),
             "hlinkClick" => p.link = hyperlink(imp, part, e),
             "hlinkMouseOver" => p.hover = hyperlink(imp, part, e),
+            "extLst" => {
+                let ours = e.children_named("ext").find(|x| x.attr("uri") == Some(crate::opc::EXT_SC_RUN));
+                p.style = ours.and_then(|x| x.child("run")).and_then(|r| r.attr("style")).filter(|id| text_style::valid_id(id)).map(String::from);
+            }
             _ => {}
         }
     }

@@ -1142,6 +1142,80 @@ fn slidecraft_typography_round_trips_in_a_paragraph_extension() {
 }
 
 #[test]
+fn text_styles_are_flattened_for_powerpoint_and_come_back_as_styles() {
+    use deckcraft_model::text::{Paragraph, Run, RunProps};
+    use deckcraft_model::text_style::TextStyle;
+    let mut p = defaults::new_presentation(None);
+    p.text_styles = vec![
+        TextStyle {
+            id: "body".into(),
+            name: "Body".into(),
+            run: RunProps { size: Some(23.0), font: Some("+mn-lt".into()), ..Default::default() },
+            ..Default::default()
+        },
+        TextStyle {
+            id: "lead".into(),
+            name: "Lead".into(),
+            based_on: Some("body".into()),
+            run: RunProps { italic: Some(true), ..Default::default() },
+            ..Default::default()
+        },
+    ];
+    let first = p.slides[0].id;
+    let s = p.slide_mut(first).expect("slide");
+    let t = s.shapes[0].text.insert(TextBody::from_text("x"));
+    t.paragraphs = vec![
+        Paragraph {
+            props: deckcraft_model::text::ParaProps { style: Some("lead".into()), ..Default::default() },
+            runs: vec![
+                Run::with("styled ", RunProps::default()),
+                Run::with("accent", RunProps { style: Some("accent".into()), bold: Some(false), ..Default::default() }),
+            ],
+            ..Default::default()
+        },
+        Paragraph { runs: vec![Run::with("plain", RunProps::default())], ..Default::default() },
+    ];
+    let original = t.paragraphs.clone();
+    let bytes = deckcraft_pptx::export(&p).expect("export");
+    let mut z = zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("zip");
+    let mut xml = String::new();
+    std::io::Read::read_to_string(&mut z.by_name("ppt/slides/slide1.xml").expect("slide"), &mut xml).expect("xml");
+    // PowerPoint sees the styles' formatting on the runs.
+    assert!(xml.contains(r#"sz="2300""#) && xml.contains(r#"i="1""#), "flattened size and italic: {xml}");
+    assert!(xml.contains(r#"<sc:typography xmlns:sc="https://github.com/Offset54/deckcraft/ns/slidecraft/2026/main" style="lead"/>"#), "{xml}");
+    assert!(xml.contains(r#"<sc:run xmlns:sc="https://github.com/Offset54/deckcraft/ns/slidecraft/2026/main" style="accent"/>"#), "{xml}");
+    let q = round(&p);
+    assert_eq!(q.text_styles, p.text_styles);
+    assert_eq!(q.slides[0].shapes[0].text.as_ref().expect("text").paragraphs, original, "the styles' formatting is taken back out");
+}
+
+#[test]
+fn a_coloured_style_on_a_shape_it_would_vanish_on_is_flattened_to_the_shapes_colour() {
+    use deckcraft_model::text::{Paragraph, Run, RunProps};
+    let mut p = defaults::new_presentation(None);
+    let first = p.slides[0].id;
+    let s = p.slide_mut(first).expect("slide");
+    s.shapes[0].fill = Some(deckcraft_model::Fill::solid(deckcraft_model::ColorRef::scheme(SchemeSlot::Accent1)));
+    let t = s.shapes[0].text.insert(TextBody::from_text("x"));
+    t.paragraphs = vec![Paragraph {
+        props: deckcraft_model::text::ParaProps { style: Some("bigNumber".into()), ..Default::default() },
+        runs: vec![Run::with("42%", RunProps::default())],
+        ..Default::default()
+    }];
+    let original = t.paragraphs.clone();
+    let bytes = deckcraft_pptx::export(&p).expect("export");
+    let mut z = zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("zip");
+    let mut xml = String::new();
+    std::io::Read::read_to_string(&mut z.by_name("ppt/slides/slide1.xml").expect("slide"), &mut xml).expect("xml");
+    let run = &xml[xml.find("<a:r>").expect("a run")..];
+    let run = &run[..run.find("</a:r>").expect("run end")];
+    assert!(run.contains(r#"sz="9600""#), "the style's size is written: {run}");
+    assert!(!run.contains("accent1"), "the accent colour that would vanish on the accent fill is not written: {run}");
+    let q = round(&p);
+    assert_eq!(q.slides[0].shapes[0].text.as_ref().expect("text").paragraphs, original);
+}
+
+#[test]
 fn a_table_fill_round_trips() {
     let mut p = defaults::new_presentation(None);
     let mut t = Table::new(2, 2, 200.0, 40.0);

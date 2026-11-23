@@ -537,7 +537,10 @@ fn sanitized(p: &Presentation) -> std::borrow::Cow<'_, Presentation> {
 
 pub fn export(p: &Presentation, main_ct: &str) -> Result<Vec<u8>, PptxError> {
     let p = sanitized(p);
-    let p: &Presentation = &p;
+    // SlideCraft text styles are written out as direct formatting (PowerPoint has none); the
+    // style ids ride in extensions and the reader takes the formatting back out.
+    let flat = deckcraft_model::text_style::flatten_deck(&p);
+    let p: &Presentation = flat.as_ref().unwrap_or(&p);
     let mut x = Exp {
         p,
         pkg: PackageOut::default(),
@@ -1154,8 +1157,16 @@ fn presentation_xml(x: &mut Exp, o: &mut Out, masters: &[(u64, String)], notes: 
     dml::list_style(&mut w, x, o, "p:defaultTextStyle", &dts);
     let sections = section_slides(p);
     let raw = p.raw_ext.as_deref().filter(|r| !r.trim().is_empty());
-    if !sections.is_empty() || raw.is_some() {
+    let styles = deckcraft_model::text_style::to_json(&p.text_styles);
+    if !sections.is_empty() || raw.is_some() || styles.is_some() {
         let mut inner = W::frag();
+        if let Some(json) = &styles {
+            inner.open("p:ext", A::new().a("uri", crate::opc::EXT_SC_TEXT_STYLES));
+            inner.open("sc:textStyles", A::new().a("xmlns:sc", crate::opc::NS_SC));
+            inner.text(json);
+            inner.close("sc:textStyles");
+            inner.close("p:ext");
+        }
         if !sections.is_empty() {
             inner.open("p:ext", A::new().a("uri", crate::SECTION_EXT_URI));
             inner.open("p14:sectionLst", A::new().a("xmlns:p14", NS_P14));

@@ -123,6 +123,8 @@ pub(super) fn state(s: &mut Session, _p: &Value) -> Result<Value> {
         "composer": pp.composer.unwrap_or(deckcraft_model::text::Composer::SingleLine).as_str(),
         "hyphenate": pp.hyphenate.unwrap_or(false),
         "opticalMargin": pp.optical_margin.unwrap_or(false),
+        "paragraphStyle": pp.style,
+        "characterStyle": r.style,
         "painter": s.painter.is_some(),
     }))
 }

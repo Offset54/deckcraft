@@ -690,6 +690,8 @@ pub(crate) fn import_with_chart_points(bytes: &[u8], chart_points_cap: usize) ->
 
     p.kept_parts = kept_parts(&pkg, &pres_path);
 
+    // Text the writer flattened from SlideCraft styles gives the formatting back to its styles.
+    deckcraft_model::text_style::unflatten_deck(&mut p);
     inherit_placeholder_geometry(&mut p);
     default_text_anchor(&mut p);
     p.header_footer = header_footer(&p);
@@ -919,8 +921,17 @@ fn read_sections(p: &mut Presentation, pres_part: &Part, pres_el: &El, file_slid
             p.sections.push(Section { name: s.attr("name").unwrap_or("").to_string(), slides });
         }
     }
-    let kept: String =
-        ext.children_named("ext").filter(|e| e.attr("uri") != Some(crate::SECTION_EXT_URI) && !has_rel_refs(e)).map(|e| pres_part.keep(e)).collect();
+    // SlideCraft's text styles (written by `write::presentation_xml`), as JSON.
+    if let Some(json) = ext
+        .children_named("ext")
+        .find(|e| e.attr("uri") == Some(crate::opc::EXT_SC_TEXT_STYLES))
+        .and_then(|e| e.child("textStyles"))
+        .map(|t| t.text())
+    {
+        p.text_styles = deckcraft_model::text_style::from_json(&json);
+    }
+    let ours = |e: &El| matches!(e.attr("uri"), Some(u) if u == crate::SECTION_EXT_URI || u == crate::opc::EXT_SC_TEXT_STYLES);
+    let kept: String = ext.children_named("ext").filter(|e| !ours(e) && !has_rel_refs(e)).map(|e| pres_part.keep(e)).collect();
     if !kept.is_empty() {
         p.raw_ext = Some(kept);
     }
