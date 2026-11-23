@@ -85,7 +85,10 @@ budget is mostly a rendering budget. 60 fps pan and zoom cannot be measured in t
 ## 4. Known gaps and risks for the next phase
 
 - **Real-world decks.** The `.pptx` acceptance check names ten real decks. The suite is ready for
-  them but they need to be supplied outside the repository:
+  them but they need to be supplied outside the repository. *Update 2026-11-23:* the ten decks
+  are in `Offset54/slidecraft-pptx-corpus` at `eb77646`, and the first results are in
+  [`pptx-corpus/baseline.md`](../pptx-corpus/baseline.md): 5 of 10 decks lose something, with no
+  crash. Run the test like this:
 
   ```bash
   DECKCRAFT_PPTX_CORPUS=/path/to/decks cargo test -p deckcraft-engine --test it external_corpus -- --nocapture

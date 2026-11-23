@@ -9,7 +9,7 @@
 | Product name | **SlideCraft** |
 | Application identifier | `io.github.offset54.slidecraft` |
 | Native document extension | `.slidecraft` (`.deckcraft` still opens; both are the same package) |
-| Real-world test decks | A separate public repo, `Offset54/slidecraft-pptx-corpus`, of openly licensed decks with a credit and licence per file, run through `DECKCRAFT_PPTX_CORPUS` (changed 2026-11-19; first decided: a private folder on the owner's computer) |
+| Real-world test decks | A separate public repo, `Offset54/slidecraft-pptx-corpus`, of openly licensed decks with a credit and licence per file, run through `DECKCRAFT_PPTX_CORPUS` (changed 2026-11-19; first decided: a private folder on the owner's computer). Filled 2026-11-23: ten CC-BY-4.0 decks at `eb77646` ([`docs/pptx-corpus/`](../pptx-corpus/manifest.md)) |
 | Branch | Phases continue on `claude/new-session-lm99ab` |
 
 ## Why

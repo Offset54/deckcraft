@@ -390,7 +390,7 @@ Each decision is recorded properly in `docs/porting-log.md` when its phase start
 6. **Branches and merging.** The brief asks for a branch per phase. Where those merge
    (`custom/patches`, or a new long-lived product branch) and whether the fork's own workflow may
    change needs stating; `AGENTS.md` forbids CI changes in feature work.
-7. **Real-world decks.** Where the ten test decks live, given that PowerPoint-produced files may
+7. **Real-world decks.** *Decided 2026-11-19: a separate public repo, `Offset54/slidecraft-pptx-corpus` (filled at `eb77646`, see [`pptx-corpus/`](pptx-corpus/manifest.md)).* Where the ten test decks live, given that PowerPoint-produced files may
    not be committed.
 
 ## 12. What ran

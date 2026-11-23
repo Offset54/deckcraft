@@ -33,7 +33,7 @@ Status on 2026-11-23. For whoever picks this job up next.
 
 | What | Where |
 |---|---|
-| Docs, manifest and fetch script | `Offset54/deckcraft`, branch `claude/pptx-corpus-manifest`. Commits `3eea3ef` (fetch script), `85ec2f7` (manifest and baseline), then the handoff and repoint commits. No PR |
+| Docs, manifest and fetch script | `Offset54/deckcraft`, branch `claude/pptx-corpus-manifest` (commits `3eea3ef`, `85ec2f7`, `800eeef`, `e1504e7`), merged into `claude/new-session-lm99ab` on 2026-11-23. No PR |
 | Code the baseline ran on | `efe1de7`, branch `claude/new-session-lm99ab` |
 | Test | `crates/engine/tests/it/pptx_roundtrip.rs`, `an_external_corpus_survives_a_pptx_round_trip`. Set `DECKCRAFT_PPTX_CORPUS` to the folder of decks |
 | Decks | `Offset54/slidecraft-pptx-corpus` @ `eb77646`. Zenodo is the fallback. The decks must never be committed to `Offset54/deckcraft` (`AGENTS.md` §1.1) |
