@@ -110,7 +110,11 @@ pub fn master_styles() -> (ListStyle, ListStyle, ListStyle) {
     let sizes = [28.0, 24.0, 20.0, 18.0, 18.0, 18.0, 18.0, 18.0, 18.0];
     for (i, sz) in sizes.iter().enumerate() {
         let margin = 18.0 + 36.0 * i as f64;
-        body.set(i as u8, level(*sz, margin, -18.0, if i == 0 { 10.0 } else { 5.0 }));
+        let mut lv = level(*sz, margin, -18.0, if i == 0 { 10.0 } else { 5.0 });
+        // New decks set body text with the paragraph composer (SlideCraft, decided 2026-11-23).
+        // Imported files keep their own masters, so their text lays out as before.
+        lv.para.composer = Some(crate::text::Composer::Paragraph);
+        body.set(i as u8, lv);
     }
     let mut other = ListStyle::default();
     for i in 0..9u8 {

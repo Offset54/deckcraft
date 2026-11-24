@@ -215,7 +215,9 @@ fn items_of(p: &ParaShaped, o: ComposeOpts, allowed: &[bool], hyph: &[bool], eme
 /// single-line breaker.
 pub(crate) fn compose_lines(p: &ParaShaped, params: &BreakParams, o: ComposeOpts) -> Option<Vec<RawLine>> {
     let n = p.cells.len();
-    if !params.wrap || n == 0 || n > MAX_CELLS || p.cells.iter().any(|c| c.ch == '\t') {
+    // Tabs, and East Asian hanging punctuation (`hangingPunct`, which lets closing punctuation
+    // hang past the line end), are the single-line breaker's.
+    if !params.wrap || n == 0 || n > MAX_CELLS || p.cells.iter().any(|c| c.ch == '\t') || p.props.hanging_punct == Some(true) {
         return None;
     }
     let text: String = p.cells.iter().map(|c| c.ch).collect();

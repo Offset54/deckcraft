@@ -18,7 +18,18 @@ fn setup(text: &str, w: f64, h: f64) -> (Presentation, Shape) {
     body.text = Some(TextBody::from_text(text));
     s.shapes = vec![body.clone()];
     p.slides = vec![std::sync::Arc::new(s)];
+    without_master_composer(&mut p);
     (p, body)
+}
+
+/// New decks set body text with the paragraph composer; these tests are about layout as an
+/// imported (PowerPoint) master gives it, which names no composer.
+fn without_master_composer(p: &mut Presentation) {
+    for m in &mut p.masters {
+        for l in std::sync::Arc::make_mut(m).body_style.levels.iter_mut().flatten() {
+            l.para.composer = None;
+        }
+    }
 }
 
 fn lay(p: &Presentation, sh: &Shape, w: f64, h: f64) -> TextLayout {
