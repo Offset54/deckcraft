@@ -140,7 +140,14 @@ fn cnvpr(w: &mut W, x: &mut Exp, o: &mut Out, id: u32, s: &Shape) {
     let thread = (x.thread_next.get(&s.id).copied(), x.thread_joined.contains(&s.id));
     let threaded = thread.0.is_some() || thread.1;
     let wrap = s.text_wrap.map(|w| w.margin());
-    if s.click.is_none() && s.hover.is_none() && !s.decorative && !threaded && wrap.is_none() {
+    // SlideCraft's Phase 3 canvas data.
+    let canvas = if x.frame_background {
+        Some(crate::canvas_ext::CanvasExt { frame_background: true, ..Default::default() })
+    } else {
+        crate::canvas_ext::CanvasExt::of(s, x.canvas_operands.get(&s.id).map(Vec::as_slice))
+    }
+    .and_then(|e| e.to_json());
+    if s.click.is_none() && s.hover.is_none() && !s.decorative && !threaded && wrap.is_none() && canvas.is_none() {
         w.empty("p:cNvPr", a);
         return;
     }
@@ -151,7 +158,7 @@ fn cnvpr(w: &mut W, x: &mut Exp, o: &mut Out, id: u32, s: &Shape) {
     if let Some(h) = &s.hover {
         dml::hyperlink(w, x, o, "a:hlinkHover", h);
     }
-    if s.decorative || threaded || wrap.is_some() {
+    if s.decorative || threaded || wrap.is_some() || canvas.is_some() {
         w.open0("a:extLst");
         if s.decorative {
             w.open("a:ext", A::new().a("uri", "{C183D7F6-B498-43B3-948B-1728B52AA6E4}"));
@@ -169,6 +176,11 @@ fn cnvpr(w: &mut W, x: &mut Exp, o: &mut Out, id: u32, s: &Shape) {
         if let Some(m) = wrap {
             w.open("a:ext", A::new().a("uri", crate::opc::EXT_SC_WRAP));
             w.empty("sc:wrap", A::new().a("xmlns:sc", crate::opc::NS_SC).a("margin", m));
+            w.close("a:ext");
+        }
+        if let Some(json) = &canvas {
+            w.open("a:ext", A::new().a("uri", crate::opc::EXT_SC_CANVAS));
+            w.empty("sc:canvas", A::new().a("xmlns:sc", crate::opc::NS_SC).a("data", json.as_str()));
             w.close("a:ext");
         }
         w.close("a:extLst");
@@ -338,6 +350,15 @@ pub fn shape(w: &mut W, x: &mut Exp, o: &mut Out, cx: &mut Ctx, s: &Shape, depth
                 diagram(w, x, o, cx, s, d, children, child);
             }
         }
+        // SlideCraft editable boolean: PowerPoint gets the result as one shape; the operands go
+        // in its extension.
+        ShapeKind::Group { children, .. } if s.boolean.is_some() => {
+            let flat = Shape { kind: ShapeKind::Shape, ..s.clone() };
+            x.canvas_operands.insert(s.id, children.clone());
+            let id = cx.id_for(s);
+            sp(w, x, o, id, &flat, false);
+            x.canvas_operands.remove(&s.id);
+        }
         ShapeKind::Group { children, child } => {
             let id = cx.id_for(s);
             w.open0("p:grpSp");
@@ -371,6 +392,14 @@ pub fn shape(w: &mut W, x: &mut Exp, o: &mut Out, cx: &mut Ctx, s: &Shape, depth
                 }
             }
             w.close("p:grpSpPr");
+            // SlideCraft frame: its own box, drawn for PowerPoint as a first member.
+            if let Some(fr) = s.frame {
+                let bg = frame_background(s, &xf, &fr);
+                let bid = cx.ids.fresh();
+                x.frame_background = true;
+                sp(w, x, o, bid, &bg, false);
+                x.frame_background = false;
+            }
             shapes(w, x, o, cx, children, depth + 1);
             w.close("p:grpSp");
         }
@@ -1066,6 +1095,24 @@ pub fn tree_header(w: &mut W) {
     w.empty("a:chExt", A::new().a("cx", 0).a("cy", 0));
     w.close("a:xfrm");
     w.close("p:grpSpPr");
+}
+
+/// The rectangle a SlideCraft frame draws behind its members (as the renderer's
+/// `frame_background`, which this crate can't use: the layering keeps it off `render`).
+fn frame_background(s: &Shape, x: &deckcraft_geom::Xfrm, fr: &deckcraft_model::canvas::Frame) -> Shape {
+    let r = fr.radius(x.w, x.h);
+    let short = x.w.abs().min(x.h.abs());
+    let geom = if r > 0.0 && short > 0.0 {
+        deckcraft_model::Geom::Preset { name: "roundRect".into(), adj: vec![(r / short * 100_000.0).clamp(0.0, 50_000.0)] }
+    } else {
+        deckcraft_model::Geom::preset("rect")
+    };
+    let fill = match &s.fill {
+        Some(Fill::Group) | None => Some(Fill::None),
+        Some(f) => Some(f.clone()),
+    };
+    let line = Some(s.line.clone().unwrap_or(deckcraft_model::style::Line { fill: Some(Fill::None), ..Default::default() }));
+    Shape { name: format!("{} background", s.name), xfrm: Some(*x), geom, fill, line, effects: s.effects.clone(), ..Default::default() }
 }
 
 #[cfg(test)]

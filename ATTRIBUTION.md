@@ -40,6 +40,9 @@ artwork. The ribbon and menu icons stay original drawings.
 | `samples/golden/phase-2/slide-*.png` | DeckCraft contributors | renders of `samples/phase-2.deckcraft` by `crates/engine/tests/it/golden.rs` (`DECKCRAFT_BLESS_GOLDEN=1`); text in Inter (OFL-1.1) | CC0-1.0 | Golden pictures the renderer is compared with |
 | `docs/images/phase-2-sample.png` | DeckCraft contributors | contact sheet of `samples/golden/phase-2/slide-*.png` (the seven golden pictures at half size) | CC0-1.0 | Phase 2 report |
 | `docs/images/phase-2-themes.png` | DeckCraft contributors | slides 3 and 7 of `samples/phase-2.deckcraft` rendered by `deckcraft-cli` in each built-in theme (`design.theme`), at half size; theme fonts from craft-fonts (OFL-1.1) | CC0-1.0 | Phase 2 report: styles follow the theme |
+| `samples/phase-3.deckcraft` | DeckCraft contributors | written by `crates/mcp/tests/it/phase3_sample.rs` through MCP tool calls (`DECKCRAFT_BLESS_GOLDEN=1`); text written for it; fonts Inter (OFL-1.1, from craft-fonts, not embedded in the file) | CC0-1.0 | Phase 3 sample deck: golden-image and `.pptx` round-trip tests |
+| `samples/golden/phase-3/slide-*.png` | DeckCraft contributors | renders of `samples/phase-3.deckcraft` by `crates/engine/tests/it/golden.rs` (`DECKCRAFT_BLESS_GOLDEN=1`); text in Inter (OFL-1.1) | CC0-1.0 | Golden pictures the renderer is compared with |
+| `docs/images/phase-3-sample.png` | DeckCraft contributors | contact sheet of `samples/golden/phase-3/slide-*.png` (the six golden pictures at half size) | CC0-1.0 | Phase 3 report |
 | Lucide icon paths in `crates/engine/src/icon_data.rs` (Insert › Icons) | Lucide Contributors; Feather icons by Cole Bemis | https://github.com/lucide-icons/lucide/tree/440a1e1dfb1e712505308da46bead3c28b1f1398/icons (release 1.56.0, 2026-10-13) | ISC; MIT for the Feather-derived icons named in that commit's LICENSE | Stroke icons inserted as shapes |
 
 ## Bundled through dependencies

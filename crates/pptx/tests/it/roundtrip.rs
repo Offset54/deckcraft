@@ -2589,3 +2589,103 @@ fn a_theme_line_style_without_a_fill_keeps_none() {
     let back = deckcraft_pptx::import(&deckcraft_pptx::export(&p).unwrap()).unwrap();
     assert!(back.masters[0].theme.format.lines.iter().all(|l| l.fill.is_some()));
 }
+
+/// SlideCraft's Phase 3 canvas data (`sc:canvas`): frames, auto layout, constraints, editable
+/// booleans, vector networks, blur, noise and P3 survive two round trips; PowerPoint gets a
+/// frame background rectangle and each boolean as one shape with its result outline.
+#[test]
+fn phase_3_canvas_data_round_trips() {
+    use deckcraft_model::ShapeKind;
+    use serde_json::json;
+    let mut s = deckcraft_engine::Session::with_new();
+    s.execute("slide.new", &json!({"layout": "blank"})).expect("slide");
+    let id = |v: serde_json::Value| v["id"].as_u64().or_else(|| v["ids"][0].as_u64()).expect("id");
+    let a = id(s.execute("shape.insert", &json!({"preset": "rect", "rect": [100, 100, 80, 60]})).expect("a"));
+    let b = id(s.execute("shape.insert", &json!({"preset": "rect", "rect": [200, 100, 80, 60]})).expect("b"));
+    let frame = id(s.execute("layout.set", &json!({"ids": [a, b], "gap": 10, "padding": 12, "width": "hug", "height": "hug"})).expect("frame"));
+    s.execute("shape.fill", &json!({"ids": [frame], "color": "#EEEEEE"})).expect("fill");
+    s.execute("frame.set", &json!({"ids": [frame], "radius": 8, "clip": true})).expect("frame.set");
+    s.execute("layout.child", &json!({"ids": [b], "height": "fill"})).expect("child");
+    let c = id(s.execute("shape.insert", &json!({"preset": "ellipse", "rect": [400, 100, 80, 80]})).expect("c"));
+    let d = id(s.execute("shape.insert", &json!({"preset": "ellipse", "rect": [440, 100, 80, 80]})).expect("d"));
+    let boolean = id(s.execute("boolean.create", &json!({"op": "subtract", "ids": [c, d]})).expect("boolean"));
+    let net = id(s
+        .execute("vector.create", &json!({"vertices": [[600, 100], [700, 100], [650, 180], [720, 220]], "segments": [[0, 1], [1, 2], [2, 0], [1, 3]], "regions": [{"loops": [[0, 1, 2]]}]}))
+        .expect("vector"));
+    s.execute("format.blur", &json!({"ids": [net], "layer": 3, "background": 5})).expect("blur");
+    s.execute("format.noise", &json!({"ids": [net], "amount": 0.25})).expect("noise");
+    s.execute("format.p3", &json!({"ids": [a], "fill": [0.1, 0.8, 0.3]})).expect("p3");
+    let p = s.doc().expect("doc").doc.as_ref().clone();
+    let before = p.slides.last().expect("slide").clone();
+
+    let bytes = deckcraft_pptx::export(&p).expect("export");
+    let mut z = zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("zip");
+    let n = p.slides.len();
+    let mut xml = String::new();
+    std::io::Read::read_to_string(&mut z.by_name(&format!("ppt/slides/slide{n}.xml")).expect("slide"), &mut xml).expect("xml");
+    assert_eq!(xml.matches("<p:grpSp>").count(), 1, "the frame is a group; the boolean is not: {xml}");
+    assert!(xml.contains("Frame 1 background"), "PowerPoint sees the frame's box");
+    assert!(xml.matches("<a:custGeom>").count() >= 2, "boolean result and vector network as custGeom");
+
+    let q = round(&round(&p));
+    let after = q.slides.last().expect("slide");
+    let find = |sl: &deckcraft_model::Slide, name: &str| -> deckcraft_model::Shape {
+        let mut out = None;
+        deckcraft_model::walk(&sl.shapes, &mut |x, _| {
+            if x.name == name {
+                out = Some(x.clone());
+            }
+        });
+        out.unwrap_or_else(|| panic!("no {name}"))
+    };
+    for sh in &before.shapes {
+        let back = find(after, &sh.name);
+        assert_eq!(back.frame, sh.frame, "{}", sh.name);
+        assert_eq!(back.auto_layout, sh.auto_layout, "{}", sh.name);
+        assert_eq!(back.boolean, sh.boolean, "{}", sh.name);
+        assert_eq!(back.vector, sh.vector, "{}", sh.name);
+        assert_eq!(back.effects.as_ref().and_then(|e| e.noise), sh.effects.as_ref().and_then(|e| e.noise), "{}", sh.name);
+        assert_eq!(back.effects.as_ref().and_then(|e| e.layer_blur), sh.effects.as_ref().and_then(|e| e.layer_blur), "{}", sh.name);
+        assert_eq!(back.effects.as_ref().and_then(|e| e.background_blur), sh.effects.as_ref().and_then(|e| e.background_blur), "{}", sh.name);
+    }
+    let fr = find(after, "Frame 1");
+    let ShapeKind::Group { children, .. } = &fr.kind else { panic!("frame is a group") };
+    assert_eq!(children.len(), 2, "the background rectangle was dropped");
+    assert!(children.iter().any(|x| x.p3.and_then(|k| k.fill) == Some([0.1, 0.8, 0.3])));
+    assert!(children.iter().any(|x| x.layout_child.is_some()));
+    let bo =
+        deckcraft_model::find_shape(&after.shapes, after.shapes.iter().find(|x| x.boolean.is_some()).map(|x| x.id).expect("boolean")).expect("b");
+    let ShapeKind::Group { children, .. } = &bo.kind else { panic!("boolean is a group again") };
+    assert_eq!(children.len(), 2);
+    let _ = boolean;
+}
+
+/// A damaged or hostile `sc:canvas` is ignored: the shape opens as PowerPoint sees it.
+#[test]
+fn a_damaged_canvas_extension_is_ignored() {
+    let mut p = defaults::new_presentation(None);
+    let first = p.slides[0].id;
+    let s = p.slide_mut(first).expect("slide");
+    s.shapes[0].frame = None;
+    s.shapes[0].vector =
+        Some(deckcraft_model::vector::VectorNetwork { w: 10.0, h: 10.0, vertices: vec![[0.0, 0.0], [5.0, 5.0]], ..Default::default() });
+    let bytes = deckcraft_pptx::export(&p).expect("export");
+    // Break the extension's JSON and point a segment at a missing point.
+    let mut z = zip::ZipArchive::new(std::io::Cursor::new(bytes.clone())).expect("zip");
+    let mut out = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    for i in 0..z.len() {
+        let mut f = z.by_index(i).expect("entry");
+        let name = f.name().to_string();
+        let mut data = Vec::new();
+        std::io::Read::read_to_end(&mut f, &mut data).expect("read");
+        if name == "ppt/slides/slide1.xml" {
+            let t = String::from_utf8(data).expect("utf8");
+            data = t.replace("&quot;vertices&quot;", "&quot;segments&quot;:[{&quot;a&quot;:0,&quot;b&quot;:99}],&quot;vertices&quot;").into_bytes();
+        }
+        out.start_file(name, zip::write::SimpleFileOptions::default()).expect("start");
+        std::io::Write::write_all(&mut out, &data).expect("write");
+    }
+    let broken = out.finish().expect("finish").into_inner();
+    let q = deckcraft_pptx::import(&broken).expect("import");
+    assert_eq!(q.slides[0].shapes[0].vector, None, "a network that doesn't check out is dropped");
+}

@@ -68,7 +68,13 @@ Estimated size: about 150 lines plus tests. Run craft-libs' own CI for the touch
      style, colDerived);
    - `RunProps.raw_ext`: `sc:run` (style);
    - `Table.raw_ext`: `sc:columns`;
-   - `Shape.raw_ext`: `sc:thread`, `sc:wrap`;
+   - `Shape.raw_ext`: `sc:thread`, `sc:wrap`; `sc:canvas` (Phase 3: frames, auto layout,
+     constraints, booleans, vector networks, P3 colours, blur, noise; JSON in `@data`). It is
+     written on every kind of shape, **groups included** (frames are `p:grpSp`), so the slot
+     must cover `p:nvGrpSpPr/p:cNvPr` as well as `p:sp`, `p:pic` and `p:cxnSp`. Two writer steps
+     are app policy and become pre-export passes here: a frame's background rectangle (a first
+     member, dropped on import) and an editable boolean written as one `p:sp` with its result
+     outline (rebuilt as a group on import);
    - slide, layout and master `raw_ext`: `sc:baselineGrid`;
    - presentation `raw_ext`: `sc:textStyles`.
 

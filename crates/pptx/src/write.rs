@@ -72,6 +72,11 @@ pub struct Exp<'a> {
     pub thread_next: HashMap<deckcraft_model::ShapeId, u32>,
     /// Boxes whose first paragraph goes on from the previous box's ([`crate::ExportOptions`]).
     pub thread_joined: std::collections::HashSet<deckcraft_model::ShapeId>,
+    /// SlideCraft editable booleans being written as their result: each one's operands, for its
+    /// `sc:canvas` extension.
+    pub canvas_operands: HashMap<deckcraft_model::ShapeId, Vec<deckcraft_model::Shape>>,
+    /// The shape being written is a frame's background rectangle (`sc:canvas/frameBackground`).
+    pub frame_background: bool,
 }
 
 /// A part being written: its name and relationships.
@@ -586,6 +591,8 @@ pub fn export_with(p: &Presentation, main_ct: &str, opts: &crate::ExportOptions)
         placeholder: None,
         thread_next: HashMap::new(),
         thread_joined: opts.thread_joined.clone(),
+        canvas_operands: HashMap::new(),
+        frame_background: false,
     };
     for (i, s) in p.slides.iter().enumerate() {
         x.slide_parts.insert(s.id, format!("ppt/slides/slide{}.xml", i + 1));

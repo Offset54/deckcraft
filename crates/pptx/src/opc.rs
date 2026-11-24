@@ -47,6 +47,10 @@ pub const EXT_SC_COLUMNS: &str = "{B3E9045C-2A71-4D8E-9F36-58C1A7D20E4B}";
 pub const EXT_SC_RUN: &str = "{9E1D3C51-6B7A-4F0E-9D52-2A8C4E7B1F36}";
 /// `p:presentation/p:extLst/p:ext/@uri` of the deck's text styles (`sc:textStyles`, JSON text
 /// in the model's `.deckcraft` form, `deckcraft_model::text_style::to_json`).
+/// `p:cNvPr/a:extLst/a:ext/@uri` of a shape's Phase 3 canvas data (`sc:canvas`, JSON text:
+/// frames, auto layout, constraints, booleans, vector networks, P3 colours, blur and noise;
+/// `crate::canvas_ext`).
+pub const EXT_SC_CANVAS: &str = "{A275C282-5F6D-4905-AC4E-FC5CB7D810DB}";
 pub const EXT_SC_TEXT_STYLES: &str = "{C4A7F2E8-3B5D-4A19-8E6C-71D0B9F45A23}";
 
 pub const RT_BASE: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/";

@@ -1,6 +1,6 @@
 # SlideCraft: handoff
 
-Status on 2026-11-23: Phase 2 done; Phase 3 under way in its own session (`claude/phase-3-canvas`); upstream merge deferred until 2026-12-14. Start here if you know nothing about this project.
+Status on 2026-11-24: Phase 3 done on `claude/phase-3-canvas` (waiting for the owner's Phase 4 go-ahead); upstream merge deferred until 2026-12-14. Start here if you know nothing about this project.
 
 ## Goal
 
@@ -64,7 +64,7 @@ Open (for the owner; context in [`recon.md`](recon.md) §11 and
 | 0: reconnaissance | Done | [`reports/phase-0.md`](reports/phase-0.md), [`recon.md`](recon.md), [`fork-patches.md`](fork-patches.md) |
 | 1: foundations | Done: golden images, `.pptx` round trip by pixels, command audit, undo bench | [`reports/phase-1.md`](reports/phase-1.md), [`command-audit.md`](command-audit.md), [`porting-log.md`](porting-log.md) |
 | 2: typography | Done: paragraph composer, hyphenation, optical margins, styles, baseline grid, threaded text, text wrap, table column formats | [`reports/phase-2.md`](reports/phase-2.md) |
-| 3: canvas and layout | **In progress** in session `session_01XQuQYo1QjpcCMPq58cF1k8`, branch `claude/phase-3-canvas` (started 2026-11-23) | |
+| 3: canvas and layout | Done on `claude/phase-3-canvas` (not yet merged into the main work branch): Grid view switch, editing inside groups, measurement, frames, constraints, auto layout, vector networks, editable booleans, blur and noise, Display P3 | [`reports/phase-3.md`](reports/phase-3.md), [`decisions/003-view-mode.md`](decisions/003-view-mode.md) |
 | 4–8 | Not started | The brief, §4 |
 
 ## `.pptx` corpus
@@ -99,6 +99,6 @@ Open (for the owner; context in [`recon.md`](recon.md) §11 and
    - On Linux, install `libasound2-dev` and `mesa-vulkan-drivers`, and add the Rust target
      `wasm32-unknown-unknown` ([`recon.md`](recon.md) §12).
    - Run `CARGO_INCREMENTAL=0 cargo xtask ci`. With incremental builds, `target/` reaches 28 GB.
-3. Phase 3 has the owner's go-ahead and runs in its own session. Check the dates in decision
-   004 (2026-12-14) and the open decisions above.
+3. Phase 3 is done; ask the owner for the Phase 4 go-ahead and for the decisions in
+   [`reports/phase-3.md`](reports/phase-3.md) §5. Check the dates in decision 004 (2026-12-14).
 4. For corpus work, follow [`pptx-corpus/HANDOFF.md`](pptx-corpus/HANDOFF.md).

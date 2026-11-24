@@ -7,3 +7,5 @@ mod batch_budget;
 mod phase1_sample;
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod phase2_sample;
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod phase3_sample;

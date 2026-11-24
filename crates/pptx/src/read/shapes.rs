@@ -30,6 +30,9 @@ pub struct IdCtx {
     /// Threaded text boxes whose first paragraph goes on from the previous box's
     /// (`sc:thread/@joined`), for [`merge_threads`].
     pub joined: HashSet<ShapeId>,
+    /// SlideCraft canvas data read from `sc:canvas`, applied once the tree is read
+    /// ([`apply_canvas`]).
+    pub canvas: HashMap<ShapeId, crate::canvas_ext::CanvasExt>,
 }
 
 impl IdCtx {
@@ -87,8 +90,51 @@ pub fn sp_tree(imp: &mut Imp, part: &Part, ctx: &mut IdCtx, tree: &El, depth: us
     }
     if depth == 0 {
         remap_connectors(&mut out, ctx, 0);
+        if !ctx.canvas.is_empty() {
+            apply_canvas(imp, &mut out, ctx, 0);
+        }
     }
     out
+}
+
+/// SlideCraft's canvas data back onto the shapes it was written for: a frame's background
+/// rectangle goes, an editable boolean written as its result becomes its group of operands again
+/// (with fresh ids), and the other fields return as they were.
+fn apply_canvas(imp: &mut Imp, shapes: &mut Vec<Shape>, ctx: &IdCtx, depth: usize) {
+    if depth > MAX_TREE_DEPTH {
+        return;
+    }
+    shapes.retain(|s| !ctx.canvas.get(&s.id).is_some_and(|e| e.frame_background));
+    for s in shapes.iter_mut() {
+        if let Some(e) = ctx.canvas.get(&s.id) {
+            e.apply(s);
+            if e.boolean.is_some() && !e.operands.is_empty() && matches!(s.kind, ShapeKind::Shape) {
+                let mut operands = e.operands.clone();
+                fresh_ids(imp, &mut operands, 0);
+                let child = s.xfrm.unwrap_or_default();
+                s.kind = ShapeKind::Group { children: operands, child };
+            } else if e.boolean.is_some() && !matches!(s.kind, ShapeKind::Group { .. }) {
+                // No operands to rebuild from: it stays the plain shape PowerPoint sees.
+                s.boolean = None;
+            }
+        }
+        if let ShapeKind::Group { children, .. } = &mut s.kind {
+            apply_canvas(imp, children, ctx, depth + 1);
+        }
+    }
+}
+
+/// New ids for shapes that came back from an extension (their saved ids may be taken).
+fn fresh_ids(imp: &mut Imp, shapes: &mut [Shape], depth: usize) {
+    if depth > MAX_TREE_DEPTH {
+        return;
+    }
+    for s in shapes.iter_mut() {
+        s.id = ShapeId(imp.alloc());
+        if let ShapeKind::Group { children, .. } = &mut s.kind {
+            fresh_ids(imp, children, depth + 1);
+        }
+    }
 }
 
 /// ActiveX controls (`p:controls`): each control's picture (`p:pic`), the image PowerPoint shows
@@ -196,6 +242,16 @@ fn base(imp: &mut Imp, part: &Part, ctx: &mut IdCtx, nv: Option<&El>) -> Shape {
         {
             let margin = w.f64("margin").filter(|m| m.is_finite()).unwrap_or(0.0).clamp(0.0, deckcraft_model::TextWrap::MAX_MARGIN);
             s.text_wrap = Some(deckcraft_model::TextWrap { margin });
+        }
+        // SlideCraft's Phase 3 canvas data, applied once the tree is read.
+        if let Some(e) = c
+            .child("extLst")
+            .and_then(|l| l.children_named("ext").find(|e| e.attr("uri") == Some(crate::opc::EXT_SC_CANVAS)))
+            .and_then(|e| e.child("canvas"))
+            .and_then(|e| e.attr("data"))
+            .and_then(crate::canvas_ext::CanvasExt::parse)
+        {
+            ctx.canvas.insert(s.id, e);
         }
         // SlideCraft's threaded text; `next` is a file id until `remap_connectors`.
         if let Some(t) = c
