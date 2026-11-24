@@ -1,8 +1,47 @@
 # `.pptx` round-trip corpus: baseline
 
-Status on 2026-11-23: **all ten decks pass** on branch `claude/pptx-corpus-losses`, with the test
-made stricter ([Results after the fixes](#results-after-the-fixes-2026-11-23)). The original
+Status on 2026-11-24: four coverage decks (11–14) were added, and **13 of 14 decks pass**. Deck 11
+(embedded audio) loses each narration's play length on save and reopen
+([Decks 11–14](#decks-1114-added-2026-11-24)). On 2026-11-23 all ten original decks passed on
+branch `claude/pptx-corpus-losses`, with the test made stricter
+([Results after the fixes](#results-after-the-fixes-2026-11-23)). The original
 baseline follows that section unchanged, except where a later finding is marked.
+
+## Decks 11–14, added 2026-11-24
+
+The owner approved four decks to fill the manifest's coverage gaps. They went into the corpus repo
+at `b94da4b`. Measured on `claude/owner-decisions` (code identical to `claude/new-session-lm99ab`
+at `e3371cd`), on Linux x86-64 with `CRAFT_FONTS_DIR` set, using all 14 decks:
+
+```
+DECKCRAFT_PPTX_CORPUS=<corpus>/decks CARGO_INCREMENTAL=0 cargo test -p deckcraft-engine --test it external_corpus -- --nocapture
+```
+
+| Deck | What it adds | Result |
+|---|---|---|
+| 01–10 | | 0 losses each (01: 7.7 s, the slowest) |
+| 11 `11-mac-audio-narration.pptx` | Embedded audio: 9 `.m4a` narrations, one per slide; PowerPoint for Mac | **9 losses**, one per slide (4.2 s) |
+| 12 `12-ppt-equations-tables.pptx` | 65 native PowerPoint equations, 16 tables | 0 losses (3.1 s) |
+| 13 `13-mac-charts-notes.pptx` | PowerPoint for Mac, 2 native charts, notes on all 49 slides | 0 losses (3.6 s) |
+| 14 `14-ppt2007-charts.pptx` | PowerPoint 2007, 2 native charts, 6 tables | 0 losses (3.3 s) |
+
+The test fails: `1 of 14 decks lost something`, 48 s in total. No crash, no hang, and no part was
+damaged on open.
+
+**Deck 11's loss.** On every slide, the slide show's media-play effect keeps its target,
+trigger, step, start and repeat count, but its duration doesn't survive the round trip:
+
+```
+slide 1: playback changed: effect 1 of 1: Played { target: (Some(11), None), trigger: None, step: 0,
+start_ms: 0, span_ms: 16128, repeats: 1000, what: "Media play " } became Played { … span_ms: 0, … }
+```
+
+On first open the duration matches the clip (16.1 s to 44.9 s). After SlideCraft writes the deck
+and reads it back, it is 0. The writer most likely drops the media timing node's duration (`dur`
+on the `p:cMediaNode`'s `p:cTn`), or the reader doesn't take it from the written form. This has
+not been checked in the code yet. It is recorded here and in [`HANDOFF.md`](HANDOFF.md) as the
+next corpus fix. Equations (12) and charts (13, 14) survive. As before, the test compares those
+only through pixels.
 
 ## Results after the fixes (2026-11-23)
 

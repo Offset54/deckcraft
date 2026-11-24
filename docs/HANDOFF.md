@@ -83,11 +83,12 @@ Open (for the owner; context in [`recon.md`](recon.md) §11 and
 
 ## `.pptx` corpus
 
-- The ten decks are CC-BY-4.0 and live in `Offset54/slidecraft-pptx-corpus` at `eb77646`. Every
-  SHA-256 matches [`pptx-corpus/manifest.json`](pptx-corpus/manifest.json).
+- The fourteen decks are CC-BY-4.0 and live in `Offset54/slidecraft-pptx-corpus` at `b94da4b`.
+  Decks 11–14 were added on 2026-11-24 for audio, equations, charts, Mac and 2007. Every SHA-256
+  matches [`pptx-corpus/manifest.json`](pptx-corpus/manifest.json).
 - [`pptx-corpus/fetch.ps1`](pptx-corpus/fetch.ps1) downloads them, with Zenodo as a fallback.
-- Baseline ([`pptx-corpus/baseline.md`](pptx-corpus/baseline.md)): no crash and no hang, but 5 of
-  10 decks lose something on save and reopen. The test also can't see what is lost on first open.
+- Results ([`pptx-corpus/baseline.md`](pptx-corpus/baseline.md)): no crash and no hang. 13 of 14
+  decks pass. Deck 11 loses each narration's play length on save and reopen: the next corpus fix.
 - Open items, and details, are in [`pptx-corpus/HANDOFF.md`](pptx-corpus/HANDOFF.md).
 
 ## Where things are
@@ -98,7 +99,7 @@ Open (for the owner; context in [`recon.md`](recon.md) §11 and
 | Key commits | `87d4bbb` Phase 0 · `86be392` upstream v0.19.0 merge · `d16f329` Phase 1 report · `efe1de7` SlideCraft rebrand · `528c9d9` decision 001 corpus update |
 | Corpus docs branch | `claude/pptx-corpus-manifest` at `e1504e7`, already merged here |
 | Brief's first commit | `claude/pensive-gates-mw50t6` at `4e7ddd2`; the same file is in this branch |
-| Test decks | `Offset54/slidecraft-pptx-corpus` `main` at `eb77646` |
+| Test decks | `Offset54/slidecraft-pptx-corpus` `main` at `b94da4b` |
 | Upstream | `storytold/deckcraft`. The fork's patches are listed in [`fork-patches.md`](fork-patches.md) |
 
 ## First steps for a new session

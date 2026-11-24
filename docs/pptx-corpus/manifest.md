@@ -5,7 +5,7 @@ Ten openly licensed, real-world PowerPoint decks for the external-corpus round-t
 The decks are third-party files and are **not** in this repository (`AGENTS.md` §1.1). They live
 in the separate corpus repo
 [Offset54/slidecraft-pptx-corpus](https://github.com/Offset54/slidecraft-pptx-corpus) (pinned at
-commit `eb77646`, with per-deck attribution and the CC-BY-4.0 licence text). They are fetched into
+commit `b94da4b`, with per-deck attribution and the CC-BY-4.0 licence text). They are fetched into
 a private folder with [`fetch.ps1`](fetch.ps1). The script downloads each deck from that repo and
 falls back to the Zenodo direct URL, then checks each file's SHA-256 against
 [`manifest.json`](manifest.json). The loss report as it stands today is
@@ -35,7 +35,17 @@ Authoring app and version come from `docProps/app.xml` (`Application`, `AppVersi
 | 9 | `09-keynote-workshop.pptx` | *Literature workflows from search to analysis – Workshop report* · Davnah Urbach, Rainer M Krug, Donat Agosti, Giorgia Camperio, Patrick Ruch, Delphine Clara Zemp (2026) | [zenodo.org/records/20811703](https://zenodo.org/records/20811703) · [download](https://zenodo.org/records/20811703/files/Workshop%20Feedback.pptx?download=1) | [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/) ([record](https://zenodo.org/records/20811703)) | **Apple Keynote** (*inferred*: empty `app.xml`/`core.xml`, Keynote theme "Dynamic Light", the record also holds the `.key` original) | 10 · 16:9 (24384000×13716000, 1920×1080 pt) | Keynote export structure; 11 entrance, 1 motion-path effect; effect-less transition elements | `f1d239c382b106ab52e8e2026d92da3b1b744430b6cd627a1c733bee05f174ce` · 14 920 469 | no loss |
 | 10 | `10-libreoffice-workshop.pptx` | *Workshop "Naming Files and Folders - Best Practices at the Microscope"* · André Lampe, Claudia Giuliani, Harald Binder, Jan Schmoranzer (2026) | [zenodo.org/records/19680929](https://zenodo.org/records/19680929) · [download](https://zenodo.org/records/19680929/files/Workshop%20Naming%20Files%20and%20Folders%20-%20Best%20Practice%20at%20the%20Microscop%20IN-CODE%20v1.0_PPTX.pptx?download=1) | [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/) ([record](https://zenodo.org/records/19680929)) | **LibreOffice 25.2.7.2** (Windows) | 24 · 16:9 | LibreOffice export structure (3 masters, 4 layouts); 144 entrance effects; 14 groups; 21 hyperlinks | `36a652b77bca6b4d305825fd9e4d0efa1201ac099c2bc3498c5789f4a2aba8c1` · 3 870 922 | 23 of 24 slides differ in pixels (0.6–5.6 %) |
 
-Total 55 410 009 bytes (53 MB). No deck exceeds 15 MB. The round-trip column is the test as it
+| 11 | `11-mac-audio-narration.pptx` | *CICE Consortium Progress and Plans, October 2020* · Hunke, Elizabeth; Roberts, Andrew (2020) | [zenodo.org/records/4122287](https://zenodo.org/records/4122287) · [download](https://zenodo.org/records/4122287/files/Hunke_Elizabeth_PS2-Sea_Ice-2020-10-26_revised_with_narration.pptx?download=1) | [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/) ([record](https://zenodo.org/records/4122287)) | Microsoft Macintosh PowerPoint 16.0000 (2016 or later) | 9 · 16:9 | masters/layouts: 2/16, theme "Office Theme", tables: 1, groups: 8, audio parts: 9, hyperlinks: 9 | `00a62dece537b05a7a38019ddb9089d486702aad1f4960b8bc5b8169f953e7ac` · 15 725 759 | 9 losses: each narration's play length became 0 |
+| 12 | `12-ppt-equations-tables.pptx` | *Descriptive statistics* · Slavec, Ana (2024) | [zenodo.org/records/13984443](https://zenodo.org/records/13984443) · [download](https://zenodo.org/records/13984443/files/02_Descriptive%20statistics2024_2025.pptx?download=1) | [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/) ([record](https://zenodo.org/records/13984443)) | Microsoft Office PowerPoint 16.0000 (2016 or later) | 44 · 16:9 | masters/layouts: 1/11, theme "Office Theme", tables: 16, equations (a14:m): 65, hyperlinks: 19, notes slide parts: 7 | `94a67e4131e2cefab9a527f01bbba5a2140064ed1446ef3e148c085c6c3687e2` · 3 208 783 | no loss |
+| 13 | `13-mac-charts-notes.pptx` | *Arab AFLI 2025: Insights into Open Access Repositories and Persistent Identifiers from the Arab Region* · Lrhoul, Hanae; Mostafa, Mohamad (2025) | [zenodo.org/records/17694716](https://zenodo.org/records/17694716) · [download](https://zenodo.org/records/17694716/files/Afli2025_lrhoul%26MM.pptx?download=1) | [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/) ([record](https://zenodo.org/records/17694716)) | Microsoft Macintosh PowerPoint 16.0000 (2016 or later) | 49 · 16:9 | masters/layouts: 1/16, theme "Thème Office", charts: 2, groups: 5, entrance effects: 2, hyperlinks: 25, notes slide parts: 49 | `f6ee2ffa2401f2d5dfa70600a2d5f0201ba66188c10f8ecb9f7ca44fa3d79e0e` · 9 403 350 | no loss |
+| 14 | `14-ppt2007-charts.pptx` | *Machine Learning-Based Prediction of Magnetic Anisotropy Constants and Energy Density in Silicon Electrical Steels: An Integrated CatBoost and Texture-Factor Approach* · geruganti, sudhakar (2026) | [zenodo.org/records/24070757](https://zenodo.org/records/24070757) · [download](https://zenodo.org/records/24070757/files/CatBoost_Texture_Averaging_Magnetocrystalline_Anisotropy%20PPT.pptx?download=1) | [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/) ([record](https://zenodo.org/records/24070757)) | Microsoft Office PowerPoint 12.0000 (2007) | 24 · 16:9 | masters/layouts: 1/11, theme "Office Theme", charts: 2, tables: 6 | `bd07fef190767312b42543bbc2b9251fd317ed81d28916801626109266620cc1` · 193 129 | no loss |
+
+Decks 11–14 were added on 2026-11-24 with the owner's yes, to fill the coverage gaps (embedded
+audio, PowerPoint equations, charts, PowerPoint for Mac and 2007). The same checks were run as for
+the ten: MD5 against Zenodo's checksum, the licence on the landing page, and the slide text read
+for personal data. Deck 13 shows its authors' published contact address; nothing else turned up.
+
+Decks 1–10 total 55 410 009 bytes (53 MB). No deck exceeds 15 MB. The round-trip column is the test as it
 stands, which compares SlideCraft's own import with its re-export. What SlideCraft drops when it
 *first* opens a deck is in [`baseline.md`](baseline.md).
 
@@ -79,17 +89,14 @@ personal data.
 | 16:9 | | ✓ | | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | 100+ slides | ✓ 137 | | | | | | | | | |
 
-### Not covered by any openly licensed deck I found
+### Not covered
 
-- **Embedded audio.** No CC deck carried an audio part. Video is covered.
-- **Hebrew in the ten.** Right-to-left text is covered by two Arabic decks. One Hebrew deck was
-  found (alternate A11) but left out: it has 8 slides and no other feature the ten lack.
-- **Native PowerPoint equations in quantity.** Deck 6 has a single PowerPoint equation and deck 7
-  has 56 from WPS. A PowerPoint deck with 65 equations (alternate A3 below) was left out to make
-  room for WPS.
-- **Charts beyond one.** Only deck 3 has a native chart. Alternates A5–A7 have more.
-- **PowerPoint for Mac and PowerPoint 2007.** Both were found (alternates A6, A7) but left out of
-  the ten.
+- **Hebrew in the corpus.** Right-to-left text is covered by two Arabic decks. One Hebrew deck was
+  found (alternate A11) but left out: it has 8 slides and no other feature the corpus lacks.
+
+Filled on 2026-11-24: embedded audio (deck 11), native PowerPoint equations in quantity (12),
+more native charts (13, 14), PowerPoint for Mac (11, 13) and PowerPoint 2007 (14). The feature
+table above covers decks 1–10; the counts for 11–14 are in the deck table and `manifest.json`.
 
 ## Alternates (checked, allowed, not chosen)
 
@@ -99,11 +106,11 @@ Kept as substitutes if a deck above disappears. All are CC-BY-4.0 Zenodo records
 |---|---|---|---|
 | A1 | [18644257](https://zenodo.org/records/18644257) | 132 slides, Arabic, embedded video | Overlaps decks 1, 4 and 5 |
 | A2 | [5849632](https://zenodo.org/records/5849632) | 355 slides, 563 entrance effects | Few other features; deck 1 covers 100+ slides |
-| A3 | [13984443](https://zenodo.org/records/13984443) | 65 native PowerPoint equations | Slot went to WPS (deck 7) for another writer |
+| A3 | [13984443](https://zenodo.org/records/13984443) | 65 native PowerPoint equations | **Added 2026-11-24 as deck 12** |
 | A4 | [7084068](https://zenodo.org/records/7084068) | Equations, Chinese, motion paths | 16.7 MB; decks 3 and 7 cover it |
 | A5 | [19351260](https://zenodo.org/records/19351260) | ONLYOFFICE 8.3 writer, native charts | Would push out a required feature |
-| A6 | [17694716](https://zenodo.org/records/17694716) | PowerPoint for Mac 16, native charts, notes slides | Same |
-| A7 | [24070757](https://zenodo.org/records/24070757) | PowerPoint 12.0 (2007), native charts | Same |
+| A6 | [17694716](https://zenodo.org/records/17694716) | PowerPoint for Mac 16, native charts, notes slides | **Added 2026-11-24 as deck 13** |
+| A7 | [24070757](https://zenodo.org/records/24070757) | PowerPoint 12.0 (2007), native charts | **Added 2026-11-24 as deck 14** |
 | A8 | [10043580](https://zenodo.org/records/10043580) | Second Keynote export (theme "Basic White") | Deck 9 covers Keynote |
 | A9 | [20413048](https://zenodo.org/records/20413048) | PowerPoint for Mac, Morph, SmartArt, 4 masters | Deck 2 covers it |
 | A10 | [5089084](https://zenodo.org/records/5089084) | WPS, Chinese, exit and motion-path effects | Deck 7 covers WPS |

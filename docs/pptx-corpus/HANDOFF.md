@@ -1,6 +1,11 @@
 # `.pptx` round-trip corpus: handoff
 
-Status on 2026-11-23. For whoever picks this job up next.
+Status on 2026-11-24. For whoever picks this job up next.
+
+**Latest (2026-11-24):** with the owner's yes, decks 11–14 were added to the corpus repo at
+`b94da4b` to fill the coverage gaps. 13 of 14 decks pass. Deck 11 (embedded audio) loses each
+narration's play length on save and reopen ([`baseline.md`](baseline.md#decks-1114-added-2026-11-24)).
+That is now the next fix (item 7).
 
 **Latest:** on branch `claude/pptx-corpus-losses` all ten decks pass the round-trip test, and the
 test is stricter. Items 3 and 4 below are done there. See
@@ -77,7 +82,8 @@ decides.
      `claude/new-session-lm99ab` (merge `9b75851`), which the Phase 3 session builds on, so a
      squash would have meant rewriting pushed, shared history for one red intermediate commit.
      Bisecting across it: treat `3d08904` as "skip".
-5. **Fill the coverage gaps** listed under `coverage_gaps` in the manifest:
+5. **Done 2026-11-24: fill the coverage gaps.** Decks 11–14 are in the corpus repo at `b94da4b`, and
+   `corpus_repo` in `manifest.json` points there. Only Hebrew is still out (alternate A11). The gaps were:
    - No deck has embedded audio.
    - There is only one native chart.
    - There are few native PowerPoint equations.
@@ -87,6 +93,10 @@ decides.
    Then update `corpus_repo.commit` and `raw_base` in `manifest.json`.
 6. **The parent session is still marked blocked** waiting on the corpus repo. That is resolved; the
    owner can close it.
+7. **Deck 11 loses media timing on save.** Every slide's media-play effect comes back with
+   `span_ms: 0` instead of the clip length. Find out whether the writer drops the media node's
+   duration or the reader doesn't recover it from what was written, fix it, and add a regression test
+   built from a deck we generate (never deck 11 itself: `AGENTS.md` §1.1).
 
 ## What a fresh session should do next
 
