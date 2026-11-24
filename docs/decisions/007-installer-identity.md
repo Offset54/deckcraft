@@ -77,8 +77,17 @@ CI and publishing decision, so it needs its own explicit yes.
 
 ## Checklist before applying (owner, on real machines)
 
-None of this can be built or tested in the cloud environment. The patch was checked with
-`git apply --check`, and its Rust tests ran here (see the commit that adds this record).
+None of this can be built or tested in the cloud environment. What did run here on 2026-11-24,
+with the patch applied on a local branch:
+- `git apply --check`: applies cleanly to `e3371cd`;
+- `cargo test -p deckcraft --bin deckcraft every_desktop`: 1 passed (macOS, Windows and Linux offer
+  the same file types, `.slidecraft` included);
+- `cargo test -p deckcraft-ui-egui --test flatpak_updates`: 1 passed (it reads the renamed Flatpak
+  manifests);
+- `cargo xtask assets`: all 69 asset files are attributed (the renamed icon paths).
+
+What didn't run: the full `cargo xtask ci`, `packaging-lint`, WiX, `appstreamcli` and every
+installer build.
 
 1. **Windows:** `packaging/windows/package.ps1 -Arch x64`. Install the MSI for the current user,
    then for all users. Check the folders `Programs\Offset54\SlideCraft` and
