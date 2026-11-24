@@ -130,6 +130,46 @@ pub fn fill(ctx: &mut RenderContext, name: &str, fg: Rgba, bg: Rgba, alpha: f64,
     ctx.reset_paint_transform();
 }
 
+/// SlideCraft noise: film grain over `path` (in the space `m` maps to the output), `amount`
+/// 0–1. The grain is a fixed tile of light and dark specks, one point each, so it is the same
+/// on every render and in every export.
+pub fn noise(ctx: &mut RenderContext, amount: f64, path: &BezPath, m: Affine) {
+    const N: usize = 64;
+    let det = m.determinant();
+    if !det.is_finite() || det.abs() <= 1e-12 || amount.is_nan() || amount <= 0.0 {
+        return;
+    }
+    // A small linear congruential generator: deterministic, no dependency.
+    let mut seed: u32 = 0x9E37_79B9;
+    let a = (amount.clamp(0.0, 1.0) * 0.35 * 255.0).round() as u8;
+    let data: Vec<vello_cpu::color::PremulRgba8> = (0..N * N)
+        .map(|_| {
+            seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            let v = (seed >> 24) as u8;
+            let light = v & 1 == 1;
+            let alpha = ((v as u16 * a as u16) / 255) as u8;
+            let c = if light { alpha } else { 0 };
+            vello_cpu::color::PremulRgba8 { r: c, g: c, b: c, a: alpha }
+        })
+        .collect();
+    let pm = Arc::new(Pixmap::from_parts(data, N as u16, N as u16));
+    ctx.set_transform(m);
+    ctx.set_paint(vello_cpu::Image {
+        image: vello_cpu::ImageSource::Pixmap(pm),
+        sampler: peniko::ImageSampler {
+            x_extend: peniko::Extend::Repeat,
+            y_extend: peniko::Extend::Repeat,
+            quality: peniko::ImageQuality::Low,
+            alpha: 1.0,
+        },
+    });
+    let k = crate::scale_of(m);
+    let k = if k.is_finite() && k > 0.0 { k } else { 1.0 };
+    ctx.set_paint_transform(m.inverse() * Affine::scale(k));
+    ctx.fill_path(path);
+    ctx.reset_paint_transform();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

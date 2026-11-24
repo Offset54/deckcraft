@@ -859,6 +859,15 @@ version = "0.1.0"
 source = "git+https://github.com/storytold/craft-libs?rev=ea24422ae9859dc5da398d0462bc87f8e02e0d10#ea24422ae9859dc5da398d0462bc87f8e02e0d10"
 
 [[package]]
+name = "craft-cms"
+version = "0.1.0"
+source = "git+https://github.com/storytold/craft-libs?rev=249a41bd9306a1b34330ac94e596a1a8b881378a#249a41bd9306a1b34330ac94e596a1a8b881378a"
+dependencies = [
+ "md-5",
+ "rayon",
+]
+
+[[package]]
 name = "craft-codepage"
 version = "0.1.0"
 source = "git+https://github.com/storytold/craft-libs?rev=254e9a409b410dc93c0e06ff66cd1e767893ac32#254e9a409b410dc93c0e06ff66cd1e767893ac32"
@@ -867,6 +876,24 @@ source = "git+https://github.com/storytold/craft-libs?rev=254e9a409b410dc93c0e06
 name = "craft-codepage"
 version = "0.1.0"
 source = "git+https://github.com/storytold/craft-libs?rev=63196e66f3033a6623eb629af95a104d26986725#63196e66f3033a6623eb629af95a104d26986725"
+
+[[package]]
+name = "craft-color"
+version = "0.1.0"
+source = "git+https://github.com/storytold/craft-libs?rev=249a41bd9306a1b34330ac94e596a1a8b881378a#249a41bd9306a1b34330ac94e596a1a8b881378a"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "craft-color-transform"
+version = "0.1.0"
+source = "git+https://github.com/storytold/craft-libs?rev=249a41bd9306a1b34330ac94e596a1a8b881378a#249a41bd9306a1b34330ac94e596a1a8b881378a"
+dependencies = [
+ "craft-cms",
+ "craft-color",
+ "serde",
+]
 
 [[package]]
 name = "craft-deckcraft-format"
@@ -1227,6 +1254,8 @@ name = "deckcraft-engine"
 version = "0.19.0"
 dependencies = [
  "chrono",
+ "craft-color",
+ "craft-color-transform",
  "craft-mime",
  "deckcraft-anim",
  "deckcraft-color",
@@ -3008,6 +3037,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d640282b302c0bb0a2a8e0233ead9035e3bed871f0b7e81fe4a1ec829765db44"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "md-5"
+version = "0.10.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d89e7ee0cfbedfc4da3340218492196241d89eefb6dab27de5df917a6d2e78cf"
+dependencies = [
+ "cfg-if",
+ "digest",
 ]
 
 [[package]]

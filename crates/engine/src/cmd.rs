@@ -4,7 +4,9 @@ pub mod animation;
 pub mod arrange;
 pub mod artistic;
 pub mod background;
+pub mod boolean;
 pub mod canvas;
+pub mod color_p3;
 pub mod compress;
 pub mod design;
 pub mod edit;
@@ -32,6 +34,7 @@ pub mod text_style;
 pub mod text_thread;
 pub mod three_d;
 pub mod transition;
+pub mod vector;
 pub mod zoom;
 
 use deckcraft_geom::Xfrm;
@@ -178,7 +181,10 @@ pub fn command_specs() -> &'static [CommandSpec] {
         v.extend(arrange::specs());
         v.extend(selection::specs());
         v.extend(canvas::specs());
+        v.extend(color_p3::specs());
         v.extend(merge::specs());
+        v.extend(boolean::specs());
+        v.extend(vector::specs());
         v.extend(points::specs());
         v.extend(text::specs());
         v.extend(format::specs());

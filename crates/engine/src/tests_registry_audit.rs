@@ -39,6 +39,8 @@ const QUERIES: &[&str] = &[
     "guide.list",
     // Distances between objects (Phase 3): geometry read off the slide.
     "arrange.measure",
+    // A vector network's points, segments and regions (Phase 3).
+    "vector.get",
     "font.used",
     "media.info",
     "file.info",

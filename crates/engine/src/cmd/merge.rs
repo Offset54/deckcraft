@@ -13,7 +13,7 @@ use super::{CommandSpec, NO_ID_SPACE, bad, cmd, has_two, str_param, targets, xfr
 use crate::{Result, Session};
 
 /// Closed polygons (slide points) describing a filled area (non-zero winding).
-type Area = Vec<Vec<[f64; 2]>>;
+pub(crate) type Area = Vec<Vec<[f64; 2]>>;
 
 pub const OPS: [(&str, &str); 5] =
     [("union", "Union"), ("combine", "Combine"), ("fragment", "Fragment"), ("intersect", "Intersect"), ("subtract", "Subtract")];
@@ -77,7 +77,7 @@ fn letters_of(doc: &deckcraft_model::Presentation, sel: &crate::Selection, s: &S
 }
 
 /// Append the closed polygons of `path` (mapped by `a`) to `out`.
-fn flatten(path: &deckcraft_geom::BezPath, a: deckcraft_geom::Affine, out: &mut Area) {
+pub(crate) fn flatten(path: &deckcraft_geom::BezPath, a: deckcraft_geom::Affine, out: &mut Area) {
     let mut cur: Vec<[f64; 2]> = vec![];
     let flush = |cur: &mut Vec<[f64; 2]>, out: &mut Area| {
         if cur.len() > 2 {

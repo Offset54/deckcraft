@@ -15,6 +15,33 @@ use crate::{Shape, ShapeId, ShapeKind};
 /// Deepest group nesting the canvas walks (like the model's other walks).
 pub const MAX_DEPTH: usize = 64;
 
+/// Display P3 colours a shape was given (SlideCraft). The shape's own fill and outline hold the
+/// nearest sRGB colour, which is what is drawn and what `.pptx` gets; these keep the wide-gamut
+/// originals, encoded Display P3 components 0–1. Dropped when the fill or outline is changed
+/// some other way.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct P3Colors {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fill: Option<[f64; 3]>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub line: Option<[f64; 3]>,
+}
+
+/// An editable boolean shape's operation (SlideCraft): how a group's members combine into the
+/// one shape it draws.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum BoolOp {
+    #[default]
+    Union,
+    /// The first member, less the others.
+    Subtract,
+    Intersect,
+    /// Where an odd number of members overlap.
+    Exclude,
+}
+
 /// A frame (SlideCraft, after FigCraft): a group with its own box. It draws its own fill and
 /// outline (the group shape's `fill` and `line`) behind its members, can clip them to its box,
 /// and is not refitted to its members: resizing it moves its members by their [`Constraints`]

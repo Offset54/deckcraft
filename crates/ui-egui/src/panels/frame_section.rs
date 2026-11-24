@@ -2,7 +2,7 @@
 //! corner radius, how a member follows its frame (constraints), and moving in and out of groups.
 //! Every control runs a command (`frame.*`, `layout.*`, `edit.selectChildren`/`selectParent`).
 
-use deckcraft_model::canvas::{Align, AutoLayout, Constraints, Flow, Pin, Sizing, Track};
+use deckcraft_model::canvas::{Align, AutoLayout, BoolOp, Constraints, Flow, Pin, Sizing, Track};
 use deckcraft_model::{Shape, ShapeKind};
 
 use super::{SlideApp, Ui, json, run, theme, vec2, widgets};
@@ -49,7 +49,7 @@ pub(super) fn frame_section(app: &mut SlideApp, ui: &mut Ui, sh: &Shape) {
                 run(app, "frame.set", json!({"frame": false}));
             }
         }
-        (ShapeKind::Group { .. }, None) => {
+        (ShapeKind::Group { .. }, None) if sh.boolean.is_none() => {
             if ui.button("Make Frame").on_hover_text("Give the group its own box, fill and clipping").clicked() {
                 run(app, "frame.set", json!({}));
             }
@@ -58,6 +58,28 @@ pub(super) fn frame_section(app: &mut SlideApp, ui: &mut Ui, sh: &Shape) {
             run(app, "frame.create", json!({}));
         }
         _ => {}
+    }
+    if let Some(op) = sh.boolean {
+        choice(
+            app,
+            ui,
+            "Boolean",
+            "boolean.setOp",
+            "op",
+            op,
+            &[
+                (BoolOp::Union, "union", "Union"),
+                (BoolOp::Subtract, "subtract", "Subtract"),
+                (BoolOp::Intersect, "intersect", "Intersect"),
+                (BoolOp::Exclude, "exclude", "Exclude"),
+            ],
+        );
+        if ui.button("Flatten").on_hover_text("Make the result a plain shape; the operands go").clicked() {
+            run(app, "boolean.flatten", json!({}));
+        }
+    }
+    if let Some(net) = &sh.vector {
+        ui.label(format!("Vector network: {} points, {} segments, {} regions", net.vertices.len(), net.segments.len(), net.regions.len()));
     }
     if matches!(sh.kind, ShapeKind::Group { .. }) && ui.button("Select Members").clicked() {
         run(app, "edit.selectChildren", json!({}));
@@ -176,7 +198,8 @@ fn auto_layout_controls(app: &mut SlideApp, ui: &mut Ui, al: &AutoLayout) {
         // Columns as text: `1fr 2fr hug 120`.
         let id = ui.scope_id().with("al-columns");
         let shown = al.columns.iter().map(track_text).collect::<Vec<_>>().join(" ");
-        let mut text: String = ui.data_mut(|d| d.get_temp(id).unwrap_or_else(|| shown.clone()));
+        let stored: Option<(String, String)> = ui.data_mut(|d| d.get_temp(id));
+        let mut text = widgets::text_draft(stored, &shown);
         ui.horizontal(|ui| {
             ui.add_sized(vec2(90.0, 20.0), egui::Label::new("Columns"));
             let r = ui.add(egui::TextEdit::singleline(&mut text).desired_width(120.0).hint_text("1fr 2fr hug 120"));
@@ -184,10 +207,8 @@ fn auto_layout_controls(app: &mut SlideApp, ui: &mut Ui, al: &AutoLayout) {
                 let tracks: Vec<serde_json::Value> =
                     text.split_whitespace().map(|t| t.parse::<f64>().map(|n| json!(n)).unwrap_or_else(|_| json!(t))).collect();
                 run(app, "layout.set", json!({"columns": tracks}));
-                ui.data_mut(|d| d.remove::<String>(id));
-            } else {
-                ui.data_mut(|d| d.insert_temp(id, text.clone()));
             }
+            ui.data_mut(|d| d.insert_temp(id, (shown.clone(), text.clone())));
         });
     }
     if ui.button("Remove Auto Layout").clicked() {
@@ -204,4 +225,47 @@ fn member_controls(app: &mut SlideApp, ui: &mut Ui, sh: &Shape) {
     if ui.checkbox(&mut abs, "Ignore auto layout").changed() {
         run(app, "layout.child", json!({"absolute": abs}));
     }
+}
+
+/// SlideCraft effects in the Effects tab: layer and background blur, noise, and a Display P3 fill.
+pub(super) fn canvas_effects(app: &mut SlideApp, ui: &mut Ui, sh: &Shape) {
+    let fx = sh.effects.clone().unwrap_or_default();
+    ui.add_space(6.0);
+    ui.label(egui::RichText::new("Blur & Grain").font(theme::bold(13.0)));
+    let max = deckcraft_model::style::MAX_BLUR;
+    for (label, id, key, v) in
+        [("Layer blur", "fx-layer-blur", "layer", fx.layer_blur), ("Background blur", "fx-bg-blur", "background", fx.background_blur)]
+    {
+        ui.horizontal(|ui| {
+            ui.add_sized(vec2(110.0, 20.0), egui::Label::new(label));
+            if let Some(nv) = widgets::spinner(ui, id, label, v.unwrap_or(0.0), 1.0, " pt", 70.0) {
+                run(app, "format.blur", json!({key: nv.clamp(0.0, max)}));
+            }
+        });
+    }
+    ui.horizontal(|ui| {
+        ui.add_sized(vec2(110.0, 20.0), egui::Label::new("Noise"));
+        if let Some(nv) = widgets::spinner(ui, "fx-noise", "Noise", fx.noise.unwrap_or(0.0) * 100.0, 5.0, "%", 70.0) {
+            run(app, "format.noise", json!({"amount": (nv / 100.0).clamp(0.0, 1.0)}));
+        }
+    });
+    // Display P3: `0.1 0.9 0.3` or `color(display-p3 0.1 0.9 0.3)`.
+    let id = ui.scope_id().with(("fx-p3", sh.id.0));
+    let shown = sh.p3.and_then(|k| k.fill).map(|c| format!("{} {} {}", c[0], c[1], c[2])).unwrap_or_default();
+    let stored: Option<(String, String)> = ui.data_mut(|d| d.get_temp(id));
+    let mut text = widgets::text_draft(stored, &shown);
+    ui.horizontal(|ui| {
+        ui.add_sized(vec2(110.0, 20.0), egui::Label::new("Display P3 fill"));
+        let r = ui.add(egui::TextEdit::singleline(&mut text).desired_width(120.0).hint_text("r g b (0–1)"));
+        if r.lost_focus() && text != shown {
+            let t = text.trim();
+            let v = if t.starts_with("color(") {
+                json!(t)
+            } else {
+                json!(t.split_whitespace().filter_map(|n| n.parse::<f64>().ok()).collect::<Vec<_>>())
+            };
+            run(app, "format.p3", json!({"fill": v}));
+        }
+        ui.data_mut(|d| d.insert_temp(id, (shown.clone(), text.clone())));
+    });
 }

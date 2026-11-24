@@ -129,6 +129,10 @@ pub(super) fn shape_format(app: &mut SlideApp, ui: &mut Ui) {
                 run(app, "shape.editPoints", json!({"on": true}));
                 ui.close();
             }
+            if ui.add_enabled(enabled(app, "vector.fromPath"), egui::Button::new("Convert to Vector Network")).clicked() {
+                run(app, "vector.fromPath", json!({}));
+                ui.close();
+            }
             ui.separator();
             smooth_corners_row(app, ui);
         });
@@ -138,6 +142,20 @@ pub(super) fn shape_format(app: &mut SlideApp, ui: &mut Ui) {
             for (op, label) in deckcraft_engine::cmd::merge::OPS {
                 if ui.button(label).clicked() {
                     run(app, "shape.merge", json!({"op": op}));
+                    ui.close();
+                }
+            }
+            // SlideCraft: the same, keeping the shapes so they can still be edited.
+            ui.separator();
+            ui.label("Editable");
+            for (op, label) in [
+                ("union", "Union (editable)"),
+                ("subtract", "Subtract (editable)"),
+                ("intersect", "Intersect (editable)"),
+                ("exclude", "Exclude (editable)"),
+            ] {
+                if ui.add_enabled(enabled(app, "boolean.create"), egui::Button::new(label)).clicked() {
+                    run(app, "boolean.create", json!({"op": op}));
                     ui.close();
                 }
             }

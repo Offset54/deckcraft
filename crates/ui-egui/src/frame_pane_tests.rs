@@ -90,3 +90,43 @@ fn a_member_shows_its_layout_and_alt_shows_distances() {
     h.run_steps(2);
     shot(&mut h, "measure.png");
 }
+
+#[test]
+fn a_boolean_shape_shows_its_operation_and_flattens() {
+    let _gpu = crate::gpu_lock::gpu_lock();
+    let (mut h, ids) = harness();
+    // The teal square cut out of the red one, overlapping it.
+    h.state_mut().run("shape.move", json!({"ids": [ids[1]], "dx": -120, "dy": 30})).unwrap();
+    let b = h.state_mut().run("boolean.create", json!({"op": "subtract", "ids": [ids[0], ids[1]]})).unwrap();
+    let b = deckcraft_model::ShapeId(b["id"].as_u64().unwrap() as u32);
+    h.state_mut().run("view.pane", json!({"pane": "format"})).unwrap();
+    h.state_mut().ui.format_tab = "size".into();
+    h.run_steps(6);
+    shot(&mut h, "boolean.png");
+    assert!(h.query_all_by_label("Boolean").count() >= 1);
+    h.get_by_label("Flatten").click();
+    h.run_steps(2);
+    let st = h.state().session.active().unwrap();
+    assert!(st.shape(b).unwrap().boolean.is_none());
+}
+
+#[test]
+fn the_effects_tab_sets_blur_noise_and_a_p3_fill() {
+    let _gpu = crate::gpu_lock::gpu_lock();
+    let (mut h, ids) = harness();
+    h.state_mut().run("edit.select", json!({"ids": [ids[0]]})).unwrap();
+    h.state_mut().run("view.pane", json!({"pane": "format"})).unwrap();
+    h.state_mut().ui.format_tab = "effects".into();
+    h.run_steps(4);
+    assert!(h.query_all_by_label("Layer blur").count() >= 1);
+    assert!(h.query_all_by_label("Display P3 fill").count() >= 1);
+    // The controls run the commands; the pane shows what they set.
+    h.state_mut().run("format.blur", json!({"background": 12})).unwrap();
+    h.state_mut().run("format.p3", json!({"fill": [0.0, 0.8, 0.3]})).unwrap();
+    h.run_steps(3);
+    shot(&mut h, "effects-pane.png");
+    let st = h.state().session.active().unwrap();
+    let sh = st.shape(deckcraft_model::ShapeId(ids[0] as u32)).unwrap();
+    assert_eq!(sh.effects.as_ref().unwrap().background_blur, Some(12.0));
+    assert!(sh.p3.is_some());
+}

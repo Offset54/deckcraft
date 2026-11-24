@@ -428,3 +428,65 @@ fn a_frame_filled_afterwards_keeps_rounded_corners() {
     assert_eq!(color_at(&mut s, fx.x + 20.0, fx.y + 8.0), "00FF00");
     assert_ne!(color_at(&mut s, fx.x + 1.0, fx.y + 1.0), "00FF00", "the corner is cut");
 }
+
+// ---------- Effects (P3.7) ----------
+
+#[test]
+fn layer_blur_softens_a_shape_and_background_blur_frosts_what_is_behind() {
+    let mut s = Session::with_new();
+    s.execute("slide.new", &json!({"layout": "blank"})).unwrap();
+    // Black and white stripes behind a see-through pane.
+    for i in 0..10 {
+        s.execute("shape.insert", &json!({"preset": "rect", "rect": [100 + i * 20, 100, 10, 200]})).unwrap();
+        s.execute("shape.fill", &json!({"color": "#000000"})).unwrap();
+        s.execute("shape.line", &json!({"none": true})).unwrap();
+    }
+    let pane = id(&s.execute("shape.insert", &json!({"preset": "rect", "rect": [100, 150, 200, 100]})).unwrap());
+    s.execute("shape.fill", &json!({"color": "#FFFFFF", "transparency": 0.9})).unwrap();
+    s.execute("shape.line", &json!({"none": true})).unwrap();
+    let px = |s: &mut Session, x: f64, y: f64| s.execute("slide.colorAt", &json!({"x": x, "y": y})).unwrap()["color"].as_str().unwrap().to_string();
+    // Without blur: stripes show through sharply.
+    let (dark, light) = (px(&mut s, 105.0, 200.0), px(&mut s, 115.0, 200.0));
+    assert_ne!(dark, light);
+    s.execute("format.blur", &json!({"ids": [pane.0], "background": 20})).unwrap();
+    let (d2, l2) = (px(&mut s, 105.0, 200.0), px(&mut s, 115.0, 200.0));
+    // Blurred: the stripes average out to similar greys under the pane.
+    let grey = |h: &str| u8::from_str_radix(&h[0..2], 16).unwrap() as i32;
+    assert!((grey(&d2) - grey(&l2)).abs() < 40, "{d2} {l2}");
+    // Outside the pane the stripes stay sharp.
+    assert_eq!(px(&mut s, 105.0, 120.0), "000000");
+    // Layer blur on a stripe smears its edge.
+    s.execute("format.blur", &json!({"ids": [pane.0], "background": null})).unwrap();
+    assert!(s.doc().unwrap().shape(pane).unwrap().effects.as_ref().unwrap().background_blur.is_none());
+    let first = s.doc().unwrap().current_slide().unwrap().shapes[0].id;
+    s.execute("format.blur", &json!({"ids": [first.0], "layer": 8})).unwrap();
+    assert_ne!(px(&mut s, 112.0, 120.0), "FFFFFF", "blur spreads past the edge");
+}
+
+#[test]
+fn noise_adds_grain_and_effect_commands_refuse_hostile_input() {
+    let mut s = Session::with_new();
+    s.execute("slide.new", &json!({"layout": "blank"})).unwrap();
+    let r = id(&s.execute("shape.insert", &json!({"preset": "rect", "rect": [100, 100, 200, 200]})).unwrap());
+    s.execute("shape.fill", &json!({"color": "#808080"})).unwrap();
+    s.execute("format.noise", &json!({"amount": 1})).unwrap();
+    let colours: std::collections::HashSet<String> = (0..20)
+        .map(|i| s.execute("slide.colorAt", &json!({"x": 150.0 + i as f64 * 3.0, "y": 150})).unwrap()["color"].as_str().unwrap().to_string())
+        .collect();
+    assert!(colours.len() > 2, "grain varies: {colours:?}");
+    for (c, p) in [
+        ("format.noise", json!({"amount": 2})),
+        ("format.noise", json!({"amount": "lots"})),
+        ("format.noise", json!({})),
+        ("format.blur", json!({"layer": -1})),
+        ("format.blur", json!({"background": 1e9})),
+        ("format.blur", json!({})),
+        ("format.blur", json!({"ids": [424242], "layer": 2})),
+    ] {
+        assert!(s.execute(c, &p).is_err(), "{c} {p}");
+    }
+    // Saved and opened.
+    let bytes = deckcraft_format::save(&s.doc().unwrap().doc).unwrap();
+    let (p, _) = crate::cmd::file::open_checked("t.deckcraft", &bytes).unwrap();
+    assert_eq!(deckcraft_model::find_shape(&p.slides.last().unwrap().shapes, r).unwrap().effects.as_ref().unwrap().noise, Some(1.0));
+}

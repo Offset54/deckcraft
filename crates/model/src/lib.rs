@@ -24,6 +24,7 @@ pub mod text;
 pub mod text_style;
 pub mod theme;
 mod trendline;
+pub mod vector;
 pub mod words;
 
 use std::sync::Arc;
@@ -387,6 +388,16 @@ pub struct Shape {
     /// On an auto layout frame's member: how it sizes and where it goes (SlideCraft).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub layout_child: Option<canvas::ChildLayout>,
+    /// On a group: it draws as one shape, its members combined by this operation; its `geom`
+    /// is the result (SlideCraft editable boolean).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub boolean: Option<canvas::BoolOp>,
+    /// A vector network this shape's `geom` is drawn from (SlideCraft, `vector`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vector: Option<vector::VectorNetwork>,
+    /// Display P3 originals of its fill and outline colours (SlideCraft, `canvas::P3Colors`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub p3: Option<canvas::P3Colors>,
 }
 
 /// How text in other boxes flows around a shape.
@@ -484,6 +495,9 @@ impl Default for Shape {
             auto_layout: None,
             constraints: None,
             layout_child: None,
+            boolean: None,
+            vector: None,
+            p3: None,
         }
     }
 }

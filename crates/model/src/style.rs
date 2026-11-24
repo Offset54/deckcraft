@@ -515,6 +515,24 @@ pub struct Effects {
     /// `a:fillOverlay`: a fill blended over the shape's fill (`blend`: `over`, `mult`, `screen`,
     /// `darken`, `lighten`). Only solid and gradient overlays are kept.
     pub fill_overlay: Option<FillOverlay>,
+    /// Layer blur (SlideCraft): the whole shape blurred, radius in points (0–250).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub layer_blur: Option<f64>,
+    /// Background blur (SlideCraft, "frosted glass"): what is behind the shape, inside its
+    /// outline, blurred by this radius in points (0–250). Seen through a see-through fill.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub background_blur: Option<f64>,
+    /// Noise (SlideCraft): film grain over the shape's fill, 0–1.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub noise: Option<f64>,
+}
+
+/// Largest blur radius, in points.
+pub const MAX_BLUR: f64 = 250.0;
+
+/// A blur radius made safe to use: `None` for nothing to blur.
+pub fn blur_radius(v: Option<f64>) -> Option<f64> {
+    v.filter(|r| r.is_finite() && *r > 0.0).map(|r| r.min(MAX_BLUR))
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -533,6 +551,9 @@ impl Effects {
             && self.reflection.is_none()
             && self.bevel.is_none()
             && self.fill_overlay.is_none()
+            && self.layer_blur.is_none()
+            && self.background_blur.is_none()
+            && self.noise.is_none()
     }
 }
 

@@ -176,11 +176,44 @@ impl Renderer {
             self.backdrop(&mut ctx, &f, &rctx, slide, view);
             // Threaded text: each box draws the part of its thread that falls in it.
             let flowed = crate::thread::flow_slide(&rctx, slide, opts.editing_text);
-            for s in &flowed.as_ref().unwrap_or(slide).shapes {
+            let shapes = &flowed.as_ref().unwrap_or(slide).shapes;
+            for (i, s) in shapes.iter().enumerate() {
+                if let Some(r) = s.effects.as_ref().and_then(|e| deckcraft_model::style::blur_radius(e.background_blur))
+                    && !(s.hidden && !opts.show_hidden)
+                {
+                    self.background_blur(&mut ctx, &f, &rctx, slide, shapes.get(..i).unwrap_or(&[]), s, view, r);
+                }
                 self.shape(&mut ctx, &f, &rctx, s, view, 0);
             }
         }
         self.finish(ctx, w, h)
+    }
+
+    /// SlideCraft background blur behind top-level shape `s`: the slide's backdrop and the shapes
+    /// before it (`below`), drawn again blurred inside `s`'s outline. The shape is then drawn over
+    /// it as usual, so a see-through fill shows frosted glass.
+    #[allow(clippy::too_many_arguments)]
+    fn background_blur(&mut self, ctx: &mut RenderContext, f: &Frame, rctx: &Ctx, slide: &Slide, below: &[Shape], s: &Shape, view: Affine, r: f64) {
+        let x = resolve::xfrm(rctx, s);
+        if !x.is_finite() {
+            return;
+        }
+        let m = view * x.affine();
+        let geo = shape_geometry(s, x.w, x.h);
+        if !drawable(&geo, m, x.w, x.h) {
+            return;
+        }
+        let clip = geo.outline();
+        ctx.set_transform(m);
+        ctx.push_layer(Some(&clip), None, None, None, None);
+        ctx.set_transform(Affine::IDENTITY);
+        ctx.push_layer(None, None, None, None, Some(blur(r / 2.0 * scale_of(view))));
+        self.backdrop(ctx, f, rctx, slide, view);
+        for b in below {
+            self.shape(ctx, f, rctx, b, view, 0);
+        }
+        ctx.pop_layer();
+        ctx.pop_layer();
     }
 
     pub(crate) fn slide_part(&mut self, pres: &Presentation, slide: &Slide, index: usize, part: SlidePart, opts: &RenderOpts) -> Image {
@@ -458,7 +491,28 @@ impl Renderer {
             let clip = st.clip.map(|[l, t, r, b]| Rect::new(l * x.w, t * x.h, r * x.w, b * x.h).to_path(0.1));
             ctx.push_layer(clip.as_ref(), None, Some(st.opacity.clamp(0.0, 1.0) as f32), None, None);
         }
+        // SlideCraft layer blur: everything the shape draws, blurred.
+        let layer_blur = s.effects.as_ref().and_then(|e| deckcraft_model::style::blur_radius(e.layer_blur));
+        if let Some(r) = layer_blur {
+            ctx.set_transform(Affine::IDENTITY);
+            ctx.push_layer(None, None, None, None, Some(blur(r / 2.0 * scale_of(m))));
+        }
         match &s.kind {
+            // SlideCraft editable boolean: drawn as the one shape its members make (its `geom`).
+            ShapeKind::Group { .. } if s.boolean.is_some() => {
+                let flat = Shape {
+                    id: s.id,
+                    xfrm: Some(x),
+                    kind: ShapeKind::Shape,
+                    geom: s.geom.clone(),
+                    fill: s.fill.clone(),
+                    line: s.line.clone(),
+                    effects: s.effects.clone(),
+                    style: s.style.clone(),
+                    ..Default::default()
+                };
+                self.geometry_shape(ctx, f, rctx, &flat, m, x.w, x.h, &st, depth);
+            }
             ShapeKind::Group { children, child } => {
                 let ch = Rect::new(child.x, child.y, child.x + child.w, child.y + child.h);
                 let gm = parent * deckcraft_geom::group_child_affine(&x, ch);
@@ -578,6 +632,9 @@ impl Renderer {
             }
             _ => self.geometry_shape(ctx, f, rctx, s, m, x.w, x.h, &st, depth),
         }
+        if layer_blur.is_some() {
+            ctx.pop_layer();
+        }
         if layered {
             ctx.pop_layer();
         }
@@ -676,6 +733,9 @@ impl Renderer {
         self.draw_contour(ctx, &d, pt);
         self.draw_fill(ctx, &d);
         self.draw_fill_overlay(ctx, &d);
+        if let Some(n) = d.effects.as_ref().and_then(|e| e.noise).filter(|n| n.is_finite() && *n > 0.0) {
+            crate::pattern::noise(ctx, n.min(1.0), &d.outline, d.m);
+        }
         self.draw_bevel(ctx, &d, pt);
         self.draw_outline(ctx, &d);
         if let Some(r) = soft {

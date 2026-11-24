@@ -130,6 +130,7 @@ fn effects_tab(app: &mut SlideApp, ui: &mut Ui, sh: &deckcraft_model::Shape) {
     }
     let raw3d = sh.effects.as_ref().and_then(|e| e.raw3d.clone());
     three_d_options(app, ui, sh.id.0, raw3d.as_deref());
+    super::frame_section::canvas_effects(app, ui, sh);
     if ui.button("Reset Effects").clicked() {
         run(app, "shape.effects", json!({"reset": true}));
     }

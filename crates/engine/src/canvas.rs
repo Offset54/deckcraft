@@ -4,7 +4,10 @@
 //!    so shapes inside groups can be selected and edited in place, and frames' members follow
 //!    their constraints;
 //! 2. auto layout frames place their members (`deckcraft_model::autolayout::solve`), innermost
-//!    frames first so a hugging frame has its size before its parent lays it out.
+//!    frames first so a hugging frame has its size before its parent lays it out;
+//! 3. a vector network whose outline was edited some other way becomes a plain path, and
+//!    editable boolean shapes recompute their result from their operands;
+//! 4. a Display P3 colour whose fill or outline was changed some other way is forgotten.
 //!
 //! Untouched slides are skipped by pointer comparison, so the cost follows the edit, not the deck
 //! ("relayout only the dirty nodes", at slide granularity).
@@ -19,6 +22,9 @@ use deckcraft_model::{Master, Presentation, Shape, ShapeKind, Xfrm};
 pub(crate) fn settle_list(list: &mut [Shape]) {
     normalize_groups(list);
     layout_tree(list, 0);
+    crate::cmd::vector::settle(list, 0);
+    crate::cmd::boolean::settle(list, 0);
+    crate::cmd::color_p3::settle(list, 0);
 }
 
 /// Lay out every auto layout frame in `list`, innermost first.
@@ -131,5 +137,5 @@ pub(crate) fn settle_all(p: &mut Presentation) {
 /// Whether a tree has anything to settle (a group, so a frame): most slides have none, and are
 /// not copied.
 fn needs_settling(list: &[Shape]) -> bool {
-    list.iter().any(|s| matches!(s.kind, deckcraft_model::ShapeKind::Group { .. }))
+    list.iter().any(|s| matches!(s.kind, deckcraft_model::ShapeKind::Group { .. }) || s.vector.is_some() || s.p3.is_some())
 }

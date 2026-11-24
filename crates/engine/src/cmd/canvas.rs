@@ -70,7 +70,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "Auto Layout",
             ["Arrange", "Auto Layout"],
             None,
-            "{ids?: frames or groups (else the selection; other objects are framed first), flow?: horizontal|vertical|grid, wrap?: bool, gap?: pt, crossGap?: pt, padding?: pt|[top,right,bottom,left], align?: start|center|end|spaceBetween, crossAlign?: start|center|end|stretch, columns?: [track], rows?: [track] (a track is points, \"hug\" or \"2fr\"), width?: fixed|hug, height?: fixed|hug} → {ids}: lay out a frame's members automatically",
+            "{ids?: a frame or group to lay out (else the selection; several objects or one that is not a group are framed first), flow?: horizontal|vertical|grid, wrap?: bool, gap?: pt, crossGap?: pt, padding?: pt|[top,right,bottom,left], align?: start|center|end|spaceBetween, crossAlign?: start|center|end|stretch, columns?: [track], rows?: [track] (a track is points, \"hug\" or \"2fr\"), width?: fixed|hug, height?: fixed|hug} → {ids}: lay out a frame's members automatically",
             has_selection,
             layout_set
         ),
@@ -91,6 +91,24 @@ pub fn specs() -> Vec<CommandSpec> {
             "{ids?: frames (else the selection)} → {ids}: the members stay where the layout put them",
             has_selection,
             layout_remove
+        ),
+        cmd!(
+            "format.blur",
+            "Blur",
+            ["Shape Format", "Shape Styles", "Shape Effects"],
+            None,
+            "{ids?, layer?: pt|null (blur the shape itself), background?: pt|null (blur what is behind it, frosted glass; top-level objects)} → {ids}: radii 0–250 pt; null or 0 removes",
+            has_selection,
+            set_blur
+        ),
+        cmd!(
+            "format.noise",
+            "Noise",
+            ["Shape Format", "Shape Styles", "Shape Effects"],
+            None,
+            "{ids?, amount: 0–1|null} → {ids}: film grain over the fill; null or 0 removes",
+            has_selection,
+            set_noise
         ),
         cmd!(
             query "arrange.measure",
@@ -441,12 +459,14 @@ fn layout_set(s: &mut Session, p: &Value) -> Result<Value> {
     if ids.is_empty() {
         return Err(bad(CMD, "select a frame, a group or the objects to lay out"));
     }
-    // Objects that aren't groups are framed first (one undo step for both: nested commands).
-    let groups = {
+    // One group or frame is laid out itself. Anything else (one other object, or several
+    // objects, frames included) is framed first, as Figma's "add auto layout" does; one undo step
+    // for both (nested commands).
+    let one_group = {
         let st = s.doc()?;
-        ids.iter().all(|i| st.shape(*i).is_some_and(Shape::is_group))
+        matches!(ids.as_slice(), [one] if st.shape(*one).is_some_and(Shape::is_group))
     };
-    if !groups {
+    if !one_group {
         let r = s.execute("frame.create", &json!({"ids": ids}))?;
         let f = r.get("id").and_then(Value::as_u64).and_then(|v| u32::try_from(v).ok()).map(ShapeId).ok_or_else(|| bad(CMD, "no frame"))?;
         ids = vec![f];
@@ -605,6 +625,60 @@ fn layout_remove(s: &mut Session, p: &Value) -> Result<Value> {
         }
         Ok(json!({"ids": ids}))
     })
+}
+
+/// `Some(None)` to remove (null or 0), `Some(Some(v))` to set, `None` when absent.
+fn effect_amount(p: &Value, key: &str, cmd: &str, max: f64) -> Result<Option<Option<f64>>> {
+    match p.get(key) {
+        None => Ok(None),
+        Some(Value::Null) => Ok(Some(None)),
+        Some(v) => match v.as_f64().filter(|n| n.is_finite() && (0.0..=max).contains(n)) {
+            Some(0.0) => Ok(Some(None)),
+            Some(n) => Ok(Some(Some(n))),
+            None => Err(bad(cmd, format!("`{key}` must be from 0 to {max}"))),
+        },
+    }
+}
+
+fn edit_effects(s: &mut Session, p: &Value, cmd: &'static str, f: impl Fn(&mut deckcraft_model::Effects)) -> Result<Value> {
+    let ids = chosen(s, p, cmd)?;
+    if ids.is_empty() {
+        return Err(bad(cmd, "select a shape"));
+    }
+    s.edit(|doc, sel| {
+        let list = crate::shapes_mut(doc, sel).ok_or_else(|| bad(cmd, "no slide"))?;
+        for id in &ids {
+            if let Some(sh) = deckcraft_model::find_shape_mut(list, *id) {
+                let mut e = sh.effects.clone().unwrap_or_default();
+                f(&mut e);
+                sh.effects = Some(e);
+            }
+        }
+        Ok(json!({"ids": ids}))
+    })
+}
+
+fn set_blur(s: &mut Session, p: &Value) -> Result<Value> {
+    const CMD: &str = "format.blur";
+    let max = deckcraft_model::style::MAX_BLUR;
+    let (layer, background) = (effect_amount(p, "layer", CMD, max)?, effect_amount(p, "background", CMD, max)?);
+    if layer.is_none() && background.is_none() {
+        return Err(bad(CMD, "give `layer` or `background`"));
+    }
+    edit_effects(s, p, CMD, |e| {
+        if let Some(v) = layer {
+            e.layer_blur = v;
+        }
+        if let Some(v) = background {
+            e.background_blur = v;
+        }
+    })
+}
+
+fn set_noise(s: &mut Session, p: &Value) -> Result<Value> {
+    const CMD: &str = "format.noise";
+    let amount = effect_amount(p, "amount", CMD, 1.0)?.ok_or_else(|| bad(CMD, "give `amount` from 0 to 1"))?;
+    edit_effects(s, p, CMD, |e| e.noise = amount)
 }
 
 /// Why a group's members can't be entered.
