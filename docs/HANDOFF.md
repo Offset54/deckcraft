@@ -1,6 +1,6 @@
 # SlideCraft: handoff
 
-Status on 2026-11-23: Phase 2 done; Phase 3 under way in its own session (`claude/phase-3-canvas`); upstream merge deferred until 2026-12-14. Start here if you know nothing about this project.
+Status on 2026-11-24: Phase 2 done; owner decisions 005–007 recorded; Phase 3 under way in its own session (`claude/phase-3-canvas`); upstream merge deferred until 2026-12-14. Start here if you know nothing about this project.
 
 ## Goal
 
@@ -10,7 +10,8 @@ typography from DesignCraft, and keeps DeckCraft's presenting and `.pptx` compat
 
 The source of truth is the owner's brief,
 [`brief/slidecraft-agent-prompt.md`](brief/slidecraft-agent-prompt.md). It is kept verbatim with
-its `{{…}}` placeholders; the values that fill them are in decision 001. It sets out the phases,
+its `{{…}}` placeholders. The values that fill them are in decision 001, and in decision 006 for
+the `{{OPTIONAL: …}}` image-generation bridge. It sets out the phases,
 the acceptance checks and the rule to **stop after each phase and wait for the owner's
 go-ahead**.
 
@@ -38,6 +39,18 @@ Made:
     `Offset54/craft-libs` (the owner creates the repository), patch, point the five PPTX-family
     crates at the fork, merge upstream.
   - Either way, new `.pptx` work follows Phase 2's extension pattern until then.
+- **Collaboration: pinned comments only** ([`decisions/005-collaboration-scope.md`](decisions/005-collaboration-scope.md)):
+  live sessions, cursors, per-person undo and the sync server are dropped. Comment polish stays in
+  Phase 7.
+- **Image-generation bridge: a generic local command hook**
+  ([`decisions/006-image-generation-hook.md`](decisions/006-image-generation-hook.md)). This fills
+  the brief's `{{OPTIONAL: …}}` placeholder: opt-in, the user configures a local program,
+  SlideCraft makes no network calls, and no ArtCraft naming appears.
+- **Installer identity: prepared, held until tested**
+  ([`decisions/007-installer-identity.md`](decisions/007-installer-identity.md)). The change is in
+  [`packaging/slidecraft-installer-identity.patch`](packaging/slidecraft-installer-identity.patch)
+  and isn't applied. The owner installs it on macOS, Windows and Linux first. The update channel
+  and the macOS bundle and DMG rename are still to do.
 - **Real-world test decks** live in the separate public repo
   [Offset54/slidecraft-pptx-corpus](https://github.com/Offset54/slidecraft-pptx-corpus), not here
   ([`pptx-corpus/`](pptx-corpus/manifest.md)).
@@ -50,12 +63,13 @@ Open (for the owner; context in [`recon.md`](recon.md) §11 and
    not answer this question explicitly.*
 2. **Document tree.** *Decided 2026-11-23: keep the nested tree
    ([`decisions/002-document-tree.md`](decisions/002-document-tree.md)).*
-3. **Collaboration.** Keep it as a stretch goal or drop it.
+3. **Collaboration.** *Decided 2026-11-24: pinned comments only (decision 005).*
 4. **Branches and merging.** Where each phase's branch merges, and whether this fork's workflow
    may change.
-5. **Image-generation bridge.** Keep it or delete it. This is the brief's `{{OPTIONAL: …}}` item.
-6. **Installer identity step.** The installers and `APP_ID` still use DeckCraft's identity. This
-   is one packaging change and can't be built or tested in the cloud (decision 001, "Pending").
+5. **Image-generation bridge.** *Decided 2026-11-24: keep it as a generic local hook (decision 006).*
+6. **Installer identity step.** *Decided 2026-11-24: prepared and held (decision 007).* Still
+   waiting on the owner: install the patch on real machines and work through the checklist in 007.
+   Building or publishing anything for release needs its own yes.
 
 ## Progress
 

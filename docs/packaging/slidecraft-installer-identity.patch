@@ -1,0 +1,808 @@
+From 44d61e8353d381dc1f35f6995ae3bde309951f1e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 24 Nov 2026 03:37:22 +0000
+Subject: [PATCH] Packaging: SlideCraft installer identity (held, untested on
+ real machines)
+
+Prepared for decision 007; not merged. Moves the installers and APP_ID
+from ai.storyteller.deckcraft to io.github.offset54.slidecraft, renames
+the product in installers, replaces ArtCraft links and the ArtCraft
+Windows suite folder, gives the MSI a new UpgradeCode, and associates
+.slidecraft on every desktop.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01XQuQYmuV1H2C5vAozrJGri
+---
+ ATTRIBUTION.md                                |   4 +-
+ apps/deckcraft/src/main.rs                    |  14 +++---
+ ....png => io.github.offset54.slidecraft.png} | Bin
+ ....png => io.github.offset54.slidecraft.png} | Bin
+ ....png => io.github.offset54.slidecraft.png} | Bin
+ ....png => io.github.offset54.slidecraft.png} | Bin
+ ....png => io.github.offset54.slidecraft.png} | Bin
+ ....png => io.github.offset54.slidecraft.png} | Bin
+ ....png => io.github.offset54.slidecraft.png} | Bin
+ ....png => io.github.offset54.slidecraft.png} | Bin
+ ....svg => io.github.offset54.slidecraft.svg} |   0
+ crates/ui-egui/src/lib.rs                     |   2 +-
+ crates/ui-egui/tests/flatpak_updates.rs       |   4 +-
+ omastore.toml                                 |   2 +-
+ packaging/freebsd/package.sh                  |   2 +-
+ packaging/icons.sh                            |   2 +-
+ .../linux/ai.storyteller.deckcraft.desktop    |  14 ------
+ packaging/linux/flatpak-bundle.sh             |   4 +-
+ ... io.github.offset54.slidecraft.bundle.yml} |  10 ++---
+ ....yml => io.github.offset54.slidecraft.yml} |  14 +++---
+ .../io.github.offset54.slidecraft.desktop     |  14 ++++++
+ ...ithub.offset54.slidecraft.metainfo.xml.in} |  23 +++++-----
+ ...=> io.github.offset54.slidecraft.mime.xml} |   8 +++-
+ packaging/linux/nfpm.yaml                     |   4 +-
+ packaging/linux/package.sh                    |   2 +-
+ packaging/macos/Info.plist.in                 |  18 ++++----
+ packaging/windows/INSTALLATION.md             |   2 +-
+ packaging/windows/check-install-policy.ps1    |  10 ++---
+ packaging/windows/deckcraft.wxs               |  40 ++++++++++--------
+ packaging/windows/install-policy.json         |  18 +++++---
+ packaging/windows/install-policy.wxi          |  20 ++++-----
+ 31 files changed, 126 insertions(+), 105 deletions(-)
+ rename assets/app-icon/hicolor/128x128/apps/{ai.storyteller.deckcraft.png => io.github.offset54.slidecraft.png} (100%)
+ rename assets/app-icon/hicolor/16x16/apps/{ai.storyteller.deckcraft.png => io.github.offset54.slidecraft.png} (100%)
+ rename assets/app-icon/hicolor/24x24/apps/{ai.storyteller.deckcraft.png => io.github.offset54.slidecraft.png} (100%)
+ rename assets/app-icon/hicolor/256x256/apps/{ai.storyteller.deckcraft.png => io.github.offset54.slidecraft.png} (100%)
+ rename assets/app-icon/hicolor/32x32/apps/{ai.storyteller.deckcraft.png => io.github.offset54.slidecraft.png} (100%)
+ rename assets/app-icon/hicolor/48x48/apps/{ai.storyteller.deckcraft.png => io.github.offset54.slidecraft.png} (100%)
+ rename assets/app-icon/hicolor/512x512/apps/{ai.storyteller.deckcraft.png => io.github.offset54.slidecraft.png} (100%)
+ rename assets/app-icon/hicolor/64x64/apps/{ai.storyteller.deckcraft.png => io.github.offset54.slidecraft.png} (100%)
+ rename assets/app-icon/hicolor/scalable/apps/{ai.storyteller.deckcraft.svg => io.github.offset54.slidecraft.svg} (100%)
+ delete mode 100644 packaging/linux/ai.storyteller.deckcraft.desktop
+ rename packaging/linux/flatpak/{ai.storyteller.deckcraft.bundle.yml => io.github.offset54.slidecraft.bundle.yml} (83%)
+ rename packaging/linux/flatpak/{ai.storyteller.deckcraft.yml => io.github.offset54.slidecraft.yml} (81%)
+ create mode 100644 packaging/linux/io.github.offset54.slidecraft.desktop
+ rename packaging/linux/{ai.storyteller.deckcraft.metainfo.xml.in => io.github.offset54.slidecraft.metainfo.xml.in} (74%)
+ rename packaging/linux/{ai.storyteller.deckcraft.mime.xml => io.github.offset54.slidecraft.mime.xml} (52%)
+
+diff --git a/ATTRIBUTION.md b/ATTRIBUTION.md
+index f5f940f..ea5f6a5 100644
+--- a/ATTRIBUTION.md
++++ b/ATTRIBUTION.md
+@@ -15,11 +15,11 @@ artwork. The ribbon and menu icons stay original drawings.
+ | Asset | Author | Source | Licence | Used for |
+ |---|---|---|---|---|
+ | `docs/brand/LICENSE-brand.txt` | ArtCraft Team | ArtCraft brand kit | — (licence text) | Terms for the ArtCraft marks |
+-| `assets/app-icon/deckcraft-1024.png`, `assets/app-icon/hicolor/*/apps/ai.storyteller.deckcraft.png` | DeckCraft contributors | rendered by DeckCraft from `assets/app-icon/icon-source.deckcraft` (shapes only) | MIT OR Apache-2.0 | Placeholder app icon (presentation board) until the mascot icon is drawn |
++| `assets/app-icon/deckcraft-1024.png`, `assets/app-icon/hicolor/*/apps/io.github.offset54.slidecraft.png` | DeckCraft contributors | rendered by DeckCraft from `assets/app-icon/icon-source.deckcraft` (shapes only) | MIT OR Apache-2.0 | Placeholder app icon (presentation board) until the mascot icon is drawn |
+ | `packaging/macos/dmg/background.svg` | @XusBadia | DeckCraft macOS DMG window background, original work for this repository (2026-10-08), derived from the DeckCraft app icon `assets/app-icon/deckcraft-1024.png` (referenced via `<image>`, not copied); text is outlined Inter / JetBrains Mono glyph paths | MIT OR Apache-2.0 (`LICENSE-MIT`, `LICENSE-APACHE`) | Finder window of the macOS DMG; `packaging/macos/dmg/generate.py` renders it to `background.tiff` |
+ | `packaging/macos/dmg/background.tiff` | @XusBadia | Rendered from `packaging/macos/dmg/background.svg` by `packaging/macos/dmg/generate.py` | MIT OR Apache-2.0 (`LICENSE-MIT`, `LICENSE-APACHE`) | 1x + 2x HiDPI TIFF for the macOS DMG window; includes the app icon (see its row) and LittleCMS's built-in sRGB profile ("No copyright, use freely") |
+ | `assets/app-icon/deckcraft.icns`, `assets/app-icon/deckcraft.ico` | DeckCraft contributors | generated from the PNGs above by `packaging/icons.sh` (sips/iconutil, `cargo xtask ico`) | MIT OR Apache-2.0 | macOS and Windows app icons |
+-| `assets/app-icon/hicolor/scalable/apps/ai.storyteller.deckcraft.svg` | DeckCraft contributors | the shapes of `assets/app-icon/icon-source.deckcraft` written out as SVG (same coordinates, colours and corner radii) | MIT OR Apache-2.0 | Scalable app icon for Linux desktops (hicolor theme) |
++| `assets/app-icon/hicolor/scalable/apps/io.github.offset54.slidecraft.svg` | DeckCraft contributors | the shapes of `assets/app-icon/icon-source.deckcraft` written out as SVG (same coordinates, colours and corner radii) | MIT OR Apache-2.0 | Scalable app icon for Linux desktops (hicolor theme) |
+ | `assets/app-icon/icon-source.deckcraft` | DeckCraft contributors | made with `deckcraft-cli run` (see git history) | MIT OR Apache-2.0 | Source of the placeholder icon |
+ | `docs/images/editor.png`, `docs/images/shape-format.png`, `docs/images/format-pane.png`, `docs/images/slide-sorter.png`, `docs/images/dark-mode.png`, `docs/images/sample-deck.png` | DeckCraft contributors | Screenshots of DeckCraft and slides rendered by `deckcraft-cli` from the built-in sample deck (original content; Inter font, OFL-1.1) | MIT OR Apache-2.0 | README screenshots |
+ | `crates/media/tests/fixtures/tone*` (`tone.mp3`, `.m4a`, `.aac`, `.ogg`, `.opus`, `.flac`, `.wma`, `tone-alac.m4a`) | DeckCraft contributors | synthesised 0.5 s 440 Hz sine, encoded by `crates/media/tests/fixtures/make.sh` (ffmpeg as the encoder only) | CC0-1.0 | Audio decoding tests |
+diff --git a/apps/deckcraft/src/main.rs b/apps/deckcraft/src/main.rs
+index 46a1c27..292cb37 100644
+--- a/apps/deckcraft/src/main.rs
++++ b/apps/deckcraft/src/main.rs
+@@ -154,7 +154,7 @@ fn display_count(window: &winit::window::Window) -> Option<usize> {
+     (n > 0).then_some(n)
+ }
+ 
+-const APP_ID: &str = "ai.storyteller.deckcraft";
++const APP_ID: &str = "io.github.offset54.slidecraft";
+ 
+ const USAGE: &str = "\
+ Usage: deckcraft [--control PORT] [--sample] [--show] [FILE...]
+@@ -196,7 +196,7 @@ fn startup(mut control_port: Option<u16>, args: impl IntoIterator<Item = String>
+ }
+ 
+ fn app_icon() -> Option<egui::IconData> {
+-    let png: &[u8] = include_bytes!("../../../assets/app-icon/hicolor/256x256/apps/ai.storyteller.deckcraft.png");
++    let png: &[u8] = include_bytes!("../../../assets/app-icon/hicolor/256x256/apps/io.github.offset54.slidecraft.png");
+     eframe::icon_data::from_png_bytes(png).map_err(|e| log::warn!("app icon: {e}")).ok()
+ }
+ 
+@@ -439,14 +439,17 @@ mod tests {
+     fn every_desktop_offers_the_same_file_types() {
+         let plist = include_str!("../../../packaging/macos/Info.plist.in");
+         let wxs = include_str!("../../../packaging/windows/deckcraft.wxs");
+-        let desktop = include_str!("../../../packaging/linux/ai.storyteller.deckcraft.desktop");
++        let desktop = include_str!("../../../packaging/linux/io.github.offset54.slidecraft.desktop");
+ 
+         let mut mac = plist_strings(plist, "CFBundleTypeExtensions");
+         // The native type is declared by its UTI; its extension is in the exported type.
+-        mac.extend(plist_strings(plist, "public.filename-extension").into_iter().filter(|e| e == "deckcraft"));
++        mac.extend(plist_strings(plist, "public.filename-extension").into_iter().filter(|e| e == "deckcraft" || e == "slidecraft"));
+         mac.sort();
+         mac.dedup();
+-        assert!(mac.iter().any(|e| e == "pptx") && mac.iter().any(|e| e == "deckcraft"), "Info.plist.in: {mac:?}");
++        assert!(
++            mac.iter().any(|e| e == "pptx") && mac.iter().any(|e| e == "deckcraft") && mac.iter().any(|e| e == "slidecraft"),
++            "Info.plist.in: {mac:?}"
++        );
+         // Every document type names a content type too, so "Change All" in Finder's Get Info works.
+         let names = plist.matches("<key>CFBundleTypeName</key>").count();
+         let content_types = plist.matches("<key>LSItemContentTypes</key>").count();
+@@ -461,6 +464,7 @@ mod tests {
+ 
+         let mime_ext = |m: &str| match m {
+             "application/x-deckcraft" => Some("deckcraft"),
++            "application/x-slidecraft" => Some("slidecraft"),
+             "application/vnd.openxmlformats-officedocument.presentationml.presentation" => Some("pptx"),
+             "application/vnd.openxmlformats-officedocument.presentationml.template" => Some("potx"),
+             "application/vnd.openxmlformats-officedocument.presentationml.slideshow" => Some("ppsx"),
+diff --git a/assets/app-icon/hicolor/128x128/apps/ai.storyteller.deckcraft.png b/assets/app-icon/hicolor/128x128/apps/io.github.offset54.slidecraft.png
+similarity index 100%
+rename from assets/app-icon/hicolor/128x128/apps/ai.storyteller.deckcraft.png
+rename to assets/app-icon/hicolor/128x128/apps/io.github.offset54.slidecraft.png
+diff --git a/assets/app-icon/hicolor/16x16/apps/ai.storyteller.deckcraft.png b/assets/app-icon/hicolor/16x16/apps/io.github.offset54.slidecraft.png
+similarity index 100%
+rename from assets/app-icon/hicolor/16x16/apps/ai.storyteller.deckcraft.png
+rename to assets/app-icon/hicolor/16x16/apps/io.github.offset54.slidecraft.png
+diff --git a/assets/app-icon/hicolor/24x24/apps/ai.storyteller.deckcraft.png b/assets/app-icon/hicolor/24x24/apps/io.github.offset54.slidecraft.png
+similarity index 100%
+rename from assets/app-icon/hicolor/24x24/apps/ai.storyteller.deckcraft.png
+rename to assets/app-icon/hicolor/24x24/apps/io.github.offset54.slidecraft.png
+diff --git a/assets/app-icon/hicolor/256x256/apps/ai.storyteller.deckcraft.png b/assets/app-icon/hicolor/256x256/apps/io.github.offset54.slidecraft.png
+similarity index 100%
+rename from assets/app-icon/hicolor/256x256/apps/ai.storyteller.deckcraft.png
+rename to assets/app-icon/hicolor/256x256/apps/io.github.offset54.slidecraft.png
+diff --git a/assets/app-icon/hicolor/32x32/apps/ai.storyteller.deckcraft.png b/assets/app-icon/hicolor/32x32/apps/io.github.offset54.slidecraft.png
+similarity index 100%
+rename from assets/app-icon/hicolor/32x32/apps/ai.storyteller.deckcraft.png
+rename to assets/app-icon/hicolor/32x32/apps/io.github.offset54.slidecraft.png
+diff --git a/assets/app-icon/hicolor/48x48/apps/ai.storyteller.deckcraft.png b/assets/app-icon/hicolor/48x48/apps/io.github.offset54.slidecraft.png
+similarity index 100%
+rename from assets/app-icon/hicolor/48x48/apps/ai.storyteller.deckcraft.png
+rename to assets/app-icon/hicolor/48x48/apps/io.github.offset54.slidecraft.png
+diff --git a/assets/app-icon/hicolor/512x512/apps/ai.storyteller.deckcraft.png b/assets/app-icon/hicolor/512x512/apps/io.github.offset54.slidecraft.png
+similarity index 100%
+rename from assets/app-icon/hicolor/512x512/apps/ai.storyteller.deckcraft.png
+rename to assets/app-icon/hicolor/512x512/apps/io.github.offset54.slidecraft.png
+diff --git a/assets/app-icon/hicolor/64x64/apps/ai.storyteller.deckcraft.png b/assets/app-icon/hicolor/64x64/apps/io.github.offset54.slidecraft.png
+similarity index 100%
+rename from assets/app-icon/hicolor/64x64/apps/ai.storyteller.deckcraft.png
+rename to assets/app-icon/hicolor/64x64/apps/io.github.offset54.slidecraft.png
+diff --git a/assets/app-icon/hicolor/scalable/apps/ai.storyteller.deckcraft.svg b/assets/app-icon/hicolor/scalable/apps/io.github.offset54.slidecraft.svg
+similarity index 100%
+rename from assets/app-icon/hicolor/scalable/apps/ai.storyteller.deckcraft.svg
+rename to assets/app-icon/hicolor/scalable/apps/io.github.offset54.slidecraft.svg
+diff --git a/crates/ui-egui/src/lib.rs b/crates/ui-egui/src/lib.rs
+index 9dfdd84..02545a8 100644
+--- a/crates/ui-egui/src/lib.rs
++++ b/crates/ui-egui/src/lib.rs
+@@ -10,7 +10,7 @@
+ /// prompt shows both, and an AppImage's menu entry gets the icon.
+ #[cfg(not(target_arch = "wasm32"))]
+ pub const UPDATE_APP: craft_update::app::App = craft_update::app::App {
+-    icon_png: Some(include_bytes!("../../../assets/app-icon/hicolor/128x128/apps/ai.storyteller.deckcraft.png")),
++    icon_png: Some(include_bytes!("../../../assets/app-icon/hicolor/128x128/apps/io.github.offset54.slidecraft.png")),
+     accent: Some([0xf0, 0x7a, 0x1e]),
+     ..craft_update::suite::DECKCRAFT
+ };
+diff --git a/crates/ui-egui/tests/flatpak_updates.rs b/crates/ui-egui/tests/flatpak_updates.rs
+index cc70ea4..1270280 100644
+--- a/crates/ui-egui/tests/flatpak_updates.rs
++++ b/crates/ui-egui/tests/flatpak_updates.rs
+@@ -14,8 +14,8 @@ fn finish_args(manifest: &str) -> Vec<&str> {
+ #[test]
+ fn flatpak_update_permissions() {
+     let manifests = [
+-        include_str!("../../../packaging/linux/flatpak/ai.storyteller.deckcraft.bundle.yml"),
+-        include_str!("../../../packaging/linux/flatpak/ai.storyteller.deckcraft.yml"),
++        include_str!("../../../packaging/linux/flatpak/io.github.offset54.slidecraft.bundle.yml"),
++        include_str!("../../../packaging/linux/flatpak/io.github.offset54.slidecraft.yml"),
+     ];
+     let args = manifests.map(finish_args);
+     assert_eq!(args[0], args[1], "source and release permissions must agree");
+diff --git a/omastore.toml b/omastore.toml
+index 248f91f..fd63479 100644
+--- a/omastore.toml
++++ b/omastore.toml
+@@ -1,6 +1,6 @@
+ kind = "app"
+ categories = ["Office"]
+-icon = "assets/app-icon/hicolor/256x256/apps/ai.storyteller.deckcraft.png"
++icon = "assets/app-icon/hicolor/256x256/apps/io.github.offset54.slidecraft.png"
+ 
+ [linux.x86_64]
+ asset = "deckcraft-{version}-linux-x86_64.tar.gz"
+diff --git a/packaging/freebsd/package.sh b/packaging/freebsd/package.sh
+index 11859ca..3fcb2a3 100755
+--- a/packaging/freebsd/package.sh
++++ b/packaging/freebsd/package.sh
+@@ -12,7 +12,7 @@ set -euo pipefail
+ # shellcheck source=../common.sh
+ . "$(dirname "${BASH_SOURCE[0]}")/../common.sh"
+ LINUX="$ROOT/packaging/linux"
+-APP_ID=ai.storyteller.deckcraft
++APP_ID=io.github.offset54.slidecraft
+ 
+ TARGET_ARGS=()
+ BIN="$CARGO_TARGET_DIR/release"
+diff --git a/packaging/icons.sh b/packaging/icons.sh
+index 79b5ede..6206cc7 100755
+--- a/packaging/icons.sh
++++ b/packaging/icons.sh
+@@ -12,7 +12,7 @@
+ set -euo pipefail
+ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ DIR="$ROOT/assets/app-icon"
+-ID="ai.storyteller.deckcraft"
++ID="io.github.offset54.slidecraft"
+ SRC="$DIR/deckcraft-1024.png"
+ WANT="${*:-ico icns}"
+ TMP="$(mktemp -d)"
+diff --git a/packaging/linux/ai.storyteller.deckcraft.desktop b/packaging/linux/ai.storyteller.deckcraft.desktop
+deleted file mode 100644
+index 4f6471e..0000000
+--- a/packaging/linux/ai.storyteller.deckcraft.desktop
++++ /dev/null
+@@ -1,14 +0,0 @@
+-[Desktop Entry]
+-Type=Application
+-Name=DeckCraft
+-GenericName=Presentation
+-Comment=Create and present slide decks
+-Exec=deckcraft %F
+-TryExec=deckcraft
+-Icon=ai.storyteller.deckcraft
+-Terminal=false
+-StartupNotify=true
+-StartupWMClass=ai.storyteller.deckcraft
+-Categories=Office;Presentation;
+-MimeType=application/x-deckcraft;application/vnd.openxmlformats-officedocument.presentationml.presentation;application/vnd.openxmlformats-officedocument.presentationml.template;application/vnd.openxmlformats-officedocument.presentationml.slideshow;
+-Keywords=presentation;slides;slide show;deck;pptx;keynote;powerpoint;
+diff --git a/packaging/linux/flatpak-bundle.sh b/packaging/linux/flatpak-bundle.sh
+index e56692a..f41054b 100755
+--- a/packaging/linux/flatpak-bundle.sh
++++ b/packaging/linux/flatpak-bundle.sh
+@@ -11,12 +11,12 @@
+ # `appstreamcli compose`; the freedesktop runtime and SDK named in the manifest are
+ # installed per-user from Flathub. Unless --no-test, the bundle is then installed per-user and
+ # `deckcraft-cli --version` is run inside the sandbox as a smoke test.
+-# Manifest: packaging/linux/flatpak/ai.storyteller.deckcraft.bundle.yml.
++# Manifest: packaging/linux/flatpak/io.github.offset54.slidecraft.bundle.yml.
+ set -euo pipefail
+ # shellcheck source=../common.sh
+ . "$(dirname "${BASH_SOURCE[0]}")/../common.sh"
+ HERE="$ROOT/packaging/linux"
+-APP_ID=ai.storyteller.deckcraft
++APP_ID=io.github.offset54.slidecraft
+ FLATHUB=https://dl.flathub.org/repo/flathub.flatpakrepo
+ 
+ TEST=1
+diff --git a/packaging/linux/flatpak/ai.storyteller.deckcraft.bundle.yml b/packaging/linux/flatpak/io.github.offset54.slidecraft.bundle.yml
+similarity index 83%
+rename from packaging/linux/flatpak/ai.storyteller.deckcraft.bundle.yml
+rename to packaging/linux/flatpak/io.github.offset54.slidecraft.bundle.yml
+index a861862..571d3a6 100644
+--- a/packaging/linux/flatpak/ai.storyteller.deckcraft.bundle.yml
++++ b/packaging/linux/flatpak/io.github.offset54.slidecraft.bundle.yml
+@@ -9,9 +9,9 @@
+ # and load X11, Wayland, xkbcommon, Vulkan and ALSA at runtime; the freedesktop runtime has all
+ # of them, and the GPU driver comes from its org.freedesktop.Platform.GL extension.
+ #
+-# ai.storyteller.deckcraft.yml (same directory) is the from-source manifest for Flathub. Keep
++# io.github.offset54.slidecraft.yml (same directory) is the from-source manifest for Flathub. Keep
+ # runtime-version and finish-args identical in both (packaging-lint checks this).
+-id: ai.storyteller.deckcraft
++id: io.github.offset54.slidecraft
+ runtime: org.freedesktop.Platform
+ runtime-version: '25.08'
+ sdk: org.freedesktop.Sdk
+@@ -43,11 +43,11 @@ modules:
+     build-commands:
+       - install -Dm755 bin/deckcraft /app/bin/deckcraft
+       - install -Dm755 bin/deckcraft-cli /app/bin/deckcraft-cli
+-      - install -Dm644 share/applications/ai.storyteller.deckcraft.desktop /app/share/applications/ai.storyteller.deckcraft.desktop
++      - install -Dm644 share/applications/io.github.offset54.slidecraft.desktop /app/share/applications/io.github.offset54.slidecraft.desktop
+       # .deckcraft; the runtime's shared-mime-info already knows the PowerPoint types.
+-      - install -Dm644 share/mime/packages/ai.storyteller.deckcraft.xml /app/share/mime/packages/ai.storyteller.deckcraft.xml
++      - install -Dm644 share/mime/packages/io.github.offset54.slidecraft.xml /app/share/mime/packages/io.github.offset54.slidecraft.xml
+       # Already has the release's version and date substituted by package.sh.
+-      - install -Dm644 share/metainfo/ai.storyteller.deckcraft.metainfo.xml /app/share/metainfo/ai.storyteller.deckcraft.metainfo.xml
++      - install -Dm644 share/metainfo/io.github.offset54.slidecraft.metainfo.xml /app/share/metainfo/io.github.offset54.slidecraft.metainfo.xml
+       - mkdir -p /app/share/icons /app/share/doc && cp -R share/icons/hicolor /app/share/icons/ && cp -R share/doc/deckcraft /app/share/doc/
+     sources:
+       - type: dir
+diff --git a/packaging/linux/flatpak/ai.storyteller.deckcraft.yml b/packaging/linux/flatpak/io.github.offset54.slidecraft.yml
+similarity index 81%
+rename from packaging/linux/flatpak/ai.storyteller.deckcraft.yml
+rename to packaging/linux/flatpak/io.github.offset54.slidecraft.yml
+index 5faa9da..3850185 100644
+--- a/packaging/linux/flatpak/ai.storyteller.deckcraft.yml
++++ b/packaging/linux/flatpak/io.github.offset54.slidecraft.yml
+@@ -4,13 +4,13 @@
+ #
+ #   curl -fsSLO https://raw.githubusercontent.com/flatpak/flatpak-builder-tools/master/cargo/flatpak-cargo-generator.py
+ #   python3 flatpak-cargo-generator.py Cargo.lock -o packaging/linux/flatpak/cargo-sources.json
+-#   flatpak-builder --user --install --force-clean build-flatpak packaging/linux/flatpak/ai.storyteller.deckcraft.yml
+-#   flatpak run ai.storyteller.deckcraft
++#   flatpak-builder --user --install --force-clean build-flatpak packaging/linux/flatpak/io.github.offset54.slidecraft.yml
++#   flatpak run io.github.offset54.slidecraft
+ #
+ # For Flathub, replace the `dir` source with a `git` source pinned to a release tag and commit.
+-# The release's .flatpak bundles are built from ai.storyteller.deckcraft.bundle.yml instead (it
++# The release's .flatpak bundles are built from io.github.offset54.slidecraft.bundle.yml instead (it
+ # repackages the Linux tarball); keep runtime-version and finish-args identical in both.
+-id: ai.storyteller.deckcraft
++id: io.github.offset54.slidecraft
+ runtime: org.freedesktop.Platform
+ runtime-version: '25.08'
+ sdk: org.freedesktop.Sdk
+@@ -51,14 +51,14 @@ modules:
+       - cargo --offline build --release --locked -p deckcraft
+       - install -Dm755 target/release/deckcraft /app/bin/deckcraft
+       - install -Dm644 NOTICE /app/share/doc/deckcraft/NOTICE
+-      - install -Dm644 packaging/linux/ai.storyteller.deckcraft.desktop /app/share/applications/ai.storyteller.deckcraft.desktop
+-      - install -Dm644 packaging/linux/ai.storyteller.deckcraft.mime.xml /app/share/mime/packages/ai.storyteller.deckcraft.xml
++      - install -Dm644 packaging/linux/io.github.offset54.slidecraft.desktop /app/share/applications/io.github.offset54.slidecraft.desktop
++      - install -Dm644 packaging/linux/io.github.offset54.slidecraft.mime.xml /app/share/mime/packages/io.github.offset54.slidecraft.xml
+       - mkdir -p /app/share/icons && cp -R assets/app-icon/hicolor /app/share/icons/
+       - >-
+         version=$(awk '/^\[/{p=($0=="[workspace.package]");next} p&&$1=="version"{gsub(/[" ]/,"",$3);print $3;exit}' Cargo.toml);
+         install -d /app/share/metainfo;
+         sed -e "s/@VERSION@/$version/" -e "s/@DATE@/$(date -u +%Y-%m-%d)/"
+-        packaging/linux/ai.storyteller.deckcraft.metainfo.xml.in > /app/share/metainfo/ai.storyteller.deckcraft.metainfo.xml
++        packaging/linux/io.github.offset54.slidecraft.metainfo.xml.in > /app/share/metainfo/io.github.offset54.slidecraft.metainfo.xml
+     sources:
+       - type: dir
+         path: ../../..
+diff --git a/packaging/linux/io.github.offset54.slidecraft.desktop b/packaging/linux/io.github.offset54.slidecraft.desktop
+new file mode 100644
+index 0000000..c4d155b
+--- /dev/null
++++ b/packaging/linux/io.github.offset54.slidecraft.desktop
+@@ -0,0 +1,14 @@
++[Desktop Entry]
++Type=Application
++Name=SlideCraft
++GenericName=Presentation
++Comment=Create and present slide decks
++Exec=deckcraft %F
++TryExec=deckcraft
++Icon=io.github.offset54.slidecraft
++Terminal=false
++StartupNotify=true
++StartupWMClass=io.github.offset54.slidecraft
++Categories=Office;Presentation;
++MimeType=application/x-slidecraft;application/x-deckcraft;application/vnd.openxmlformats-officedocument.presentationml.presentation;application/vnd.openxmlformats-officedocument.presentationml.template;application/vnd.openxmlformats-officedocument.presentationml.slideshow;
++Keywords=presentation;slides;slide show;deck;pptx;keynote;powerpoint;
+diff --git a/packaging/linux/ai.storyteller.deckcraft.metainfo.xml.in b/packaging/linux/io.github.offset54.slidecraft.metainfo.xml.in
+similarity index 74%
+rename from packaging/linux/ai.storyteller.deckcraft.metainfo.xml.in
+rename to packaging/linux/io.github.offset54.slidecraft.metainfo.xml.in
+index bb475ef..59da0b4 100644
+--- a/packaging/linux/ai.storyteller.deckcraft.metainfo.xml.in
++++ b/packaging/linux/io.github.offset54.slidecraft.metainfo.xml.in
+@@ -2,17 +2,17 @@
+ <!-- AppStream metadata (software centres, Flathub). Template: package.sh and the Flatpak
+      manifest substitute @VERSION@ and @DATE@ from Cargo.toml and the build date. -->
+ <component type="desktop-application">
+-  <id>ai.storyteller.deckcraft</id>
++  <id>io.github.offset54.slidecraft</id>
+   <metadata_license>CC0-1.0</metadata_license>
+   <project_license>MIT OR Apache-2.0</project_license>
+-  <name>DeckCraft</name>
++  <name>SlideCraft</name>
+   <summary>Create and present slide decks</summary>
+-  <developer id="ai.storyteller">
+-    <name>Learning Machines LLC</name>
++  <developer id="io.github.offset54">
++    <name>Offset54</name>
+   </developer>
+   <description>
+     <p>
+-      DeckCraft builds presentations and slide shows: themes, layouts, shapes, pictures,
++      SlideCraft builds presentations and slide shows: themes, layouts, shapes, pictures,
+       tables, charts, transitions and animations. It opens and saves PowerPoint (.pptx) files
+       and presents them full screen with a presenter view.
+     </p>
+@@ -20,13 +20,13 @@
+       Every action is also a command that the command line and AI agents (through MCP) can drive.
+     </p>
+   </description>
+-  <launchable type="desktop-id">ai.storyteller.deckcraft.desktop</launchable>
+-  <icon type="stock">ai.storyteller.deckcraft</icon>
++  <launchable type="desktop-id">io.github.offset54.slidecraft.desktop</launchable>
++  <icon type="stock">io.github.offset54.slidecraft</icon>
+   <!-- Only url types known to appstream 0.15 (Ubuntu 22.04, where CI validates): no vcs-browser. -->
+-  <url type="homepage">https://getartcraft.com/apps/deckcraft</url>
+-  <url type="bugtracker">https://github.com/storytold/deckcraft/issues</url>
+-  <url type="help">https://github.com/storytold/deckcraft</url>
+-  <url type="contact">https://discord.gg/artcraft</url>
++  <url type="homepage">https://github.com/Offset54/deckcraft</url>
++  <url type="bugtracker">https://github.com/Offset54/deckcraft/issues</url>
++  <url type="help">https://github.com/Offset54/deckcraft</url>
++  <url type="contact">https://github.com/Offset54/deckcraft/issues</url>
+   <categories>
+     <category>Office</category>
+     <category>Presentation</category>
+@@ -56,6 +56,7 @@
+   </supports>
+   <provides>
+     <binary>deckcraft</binary>
++    <mediatype>application/x-slidecraft</mediatype>
+     <mediatype>application/x-deckcraft</mediatype>
+   </provides>
+   <content_rating type="oars-1.1"/>
+diff --git a/packaging/linux/ai.storyteller.deckcraft.mime.xml b/packaging/linux/io.github.offset54.slidecraft.mime.xml
+similarity index 52%
+rename from packaging/linux/ai.storyteller.deckcraft.mime.xml
+rename to packaging/linux/io.github.offset54.slidecraft.mime.xml
+index 64e2c01..6e0235e 100644
+--- a/packaging/linux/ai.storyteller.deckcraft.mime.xml
++++ b/packaging/linux/io.github.offset54.slidecraft.mime.xml
+@@ -1,9 +1,15 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
++  <mime-type type="application/x-slidecraft">
++    <comment>SlideCraft presentation</comment>
++    <sub-class-of type="application/zip"/>
++    <glob pattern="*.slidecraft"/>
++    <icon name="io.github.offset54.slidecraft"/>
++  </mime-type>
+   <mime-type type="application/x-deckcraft">
+     <comment>DeckCraft presentation</comment>
+     <sub-class-of type="application/zip"/>
+     <glob pattern="*.deckcraft"/>
+-    <icon name="ai.storyteller.deckcraft"/>
++    <icon name="io.github.offset54.slidecraft"/>
+   </mime-type>
+ </mime-info>
+diff --git a/packaging/linux/nfpm.yaml b/packaging/linux/nfpm.yaml
+index 0d41fc7..e2d3146 100644
+--- a/packaging/linux/nfpm.yaml
++++ b/packaging/linux/nfpm.yaml
+@@ -13,8 +13,8 @@ release: 1
+ section: editors
+ priority: optional
+ maintainer: ${DECKCRAFT_MAINTAINER}
+-vendor: Learning Machines LLC
+-homepage: https://getartcraft.com/apps/deckcraft
++vendor: Offset54
++homepage: https://github.com/Offset54/deckcraft
+ license: MIT OR Apache-2.0
+ description: |-
+   Open-source, native presentation app that works the way PowerPoint users
+diff --git a/packaging/linux/package.sh b/packaging/linux/package.sh
+index de04703..91df2f7 100755
+--- a/packaging/linux/package.sh
++++ b/packaging/linux/package.sh
+@@ -17,7 +17,7 @@ set -euo pipefail
+ # shellcheck source=../common.sh
+ . "$(dirname "${BASH_SOURCE[0]}")/../common.sh"
+ HERE="$ROOT/packaging/linux"
+-APP_ID=ai.storyteller.deckcraft
++APP_ID=io.github.offset54.slidecraft
+ 
+ verify_sha256() {
+   local expected="$1"
+diff --git a/packaging/macos/Info.plist.in b/packaging/macos/Info.plist.in
+index d668a56..4bdfa12 100644
+--- a/packaging/macos/Info.plist.in
++++ b/packaging/macos/Info.plist.in
+@@ -7,13 +7,13 @@
+   <key>CFBundleDevelopmentRegion</key>
+   <string>en</string>
+   <key>CFBundleDisplayName</key>
+-  <string>DeckCraft</string>
++  <string>SlideCraft</string>
+   <key>CFBundleName</key>
+-  <string>DeckCraft</string>
++  <string>SlideCraft</string>
+   <key>CFBundleExecutable</key>
+   <string>DeckCraft</string>
+   <key>CFBundleIdentifier</key>
+-  <string>ai.storyteller.deckcraft</string>
++  <string>io.github.offset54.slidecraft</string>
+   <key>CFBundleInfoDictionaryVersion</key>
+   <string>6.0</string>
+   <key>CFBundlePackageType</key>
+@@ -54,7 +54,7 @@
+   <array>
+     <dict>
+       <key>CFBundleTypeName</key>
+-      <string>DeckCraft Presentation</string>
++      <string>SlideCraft Presentation</string>
+       <key>CFBundleTypeRole</key>
+       <string>Editor</string>
+       <key>LSHandlerRank</key>
+@@ -63,7 +63,7 @@
+       <string>DeckCraft</string>
+       <key>LSItemContentTypes</key>
+       <array>
+-        <string>ai.storyteller.deckcraft.presentation</string>
++        <string>io.github.offset54.slidecraft.presentation</string>
+       </array>
+     </dict>
+     <dict>
+@@ -121,9 +121,9 @@
+   <array>
+     <dict>
+       <key>UTTypeIdentifier</key>
+-      <string>ai.storyteller.deckcraft.presentation</string>
++      <string>io.github.offset54.slidecraft.presentation</string>
+       <key>UTTypeDescription</key>
+-      <string>DeckCraft Presentation</string>
++      <string>SlideCraft Presentation</string>
+       <key>UTTypeConformsTo</key>
+       <array>
+         <string>public.data</string>
+@@ -134,9 +134,9 @@
+       <key>UTTypeTagSpecification</key>
+       <dict>
+         <key>public.filename-extension</key>
+-        <array><string>deckcraft</string></array>
++        <array><string>slidecraft</string><string>deckcraft</string></array>
+         <key>public.mime-type</key>
+-        <array><string>application/x-deckcraft</string></array>
++        <array><string>application/x-slidecraft</string><string>application/x-deckcraft</string></array>
+       </dict>
+     </dict>
+   </array>
+diff --git a/packaging/windows/INSTALLATION.md b/packaging/windows/INSTALLATION.md
+index 982a5b4..1ab9e86 100644
+--- a/packaging/windows/INSTALLATION.md
++++ b/packaging/windows/INSTALLATION.md
+@@ -1,6 +1,6 @@
+ # Windows installation policy checks
+ 
+-New installations default to the current account under `Programs\ArtCraft\<App>`.
++New installations default to the current account under `Programs\Offset54\<App>`.
+ The first setup page offers installation for everyone. Scope is selected before duplicate
+ checks and directory costing. An update uses the existing context's remembered exact folder;
+ `INSTALLFOLDER` supplied explicitly is never replaced. It is a secure MSI property so the
+diff --git a/packaging/windows/check-install-policy.ps1 b/packaging/windows/check-install-policy.ps1
+index cc9416e..1ed3b52 100644
+--- a/packaging/windows/check-install-policy.ps1
++++ b/packaging/windows/check-install-policy.ps1
+@@ -55,9 +55,9 @@ try {
+     if ($properties['UpgradeCode'].Trim('{}') -ne $policy.upgradeCode) { throw 'Launcher upgrade identity changed.' }
+     $dirs = @{}
+     foreach ($row in (Read-Rows $database 'SELECT `Directory`, `Directory_Parent`, `DefaultDir` FROM `Directory`' 3)) { $dirs[$row[0]] = @($row[1],$row[2]) }
+-    if ($dirs['INSTALLFOLDER'][0] -ne 'CraftSuiteFolder' -or $dirs['CraftSuiteFolder'][1] -ne 'ArtCraft' -or
++    if ($dirs['INSTALLFOLDER'][0] -ne 'CraftSuiteFolder' -or $dirs['CraftSuiteFolder'][1] -ne 'Offset54' -or
+         $dirs['CraftSuiteFolder'][0] -ne 'LocalProgramsFolder' -or $dirs['LocalProgramsFolder'][0] -ne 'LocalAppDataFolder') {
+-      throw 'Launcher new-install folder must be under the per-user ArtCraft suite root.'
++      throw 'Launcher new-install folder must be under the per-user Offset54 suite root.'
+     }
+     foreach ($explicit in @('', 'F:\Chosen exact launcher')) {
+       Set-SessionProperty $session 'PREVIOUSINSTALLFOLDER' 'E:\Existing exact launcher'
+@@ -88,7 +88,7 @@ try {
+     $directories[$row[0]] = @($row[1], $row[2])
+   }
+   if ($directories['INSTALLFOLDER'][0] -ne 'CraftSuiteFolder' -or
+-      $directories['CraftSuiteFolder'][1] -ne 'ArtCraft') { throw 'Expected the app under the ArtCraft suite folder.' }
++      $directories['CraftSuiteFolder'][1] -ne 'Offset54') { throw 'Expected the app under the Offset54 suite folder.' }
+   $programs = $directories['CraftSuiteFolder'][0]
+   if ($programs -eq 'ProgramFiles6432Folder') { $programs = $directories[$programs][0] }
+   if ($programs -notin 'ProgramFilesFolder', 'ProgramFiles64Folder') {
+@@ -161,7 +161,7 @@ try {
+   $machineRoot = if ((Get-PackageTemplate $database) -match '^Intel') {
+     if (Get-SessionProperty $session 'VersionNT64') { ${env:ProgramFiles(x86)} } else { $env:ProgramFiles }
+   } elseif ($env:ProgramW6432) { $env:ProgramW6432 } else { $env:ProgramFiles }
+-  $machineFolder = (Join-Path $machineRoot "ArtCraft\$($policy.name)") + '\'
++  $machineFolder = (Join-Path $machineRoot "Offset54\$($policy.name)") + '\'
+   foreach ($scope in @('1', '')) {
+     Set-SessionProperty $session 'ALLUSERS' $scope
+     Set-SessionProperty $session 'INSTALLFOLDER' ''
+@@ -171,7 +171,7 @@ try {
+       if ($session.EvaluateCondition($row[2]) -eq 1 -and $session.DoAction($row[0]) -ne 1) { throw "$($row[0]) failed." }
+     }
+     $folder = Get-SessionProperty $session 'INSTALLFOLDER'
+-    $wanted = if ($scope -eq '1') { $machineFolder } else { (Join-Path $env:LOCALAPPDATA "Programs\ArtCraft\$($policy.name)") + '\' }
++    $wanted = if ($scope -eq '1') { $machineFolder } else { (Join-Path $env:LOCALAPPDATA "Programs\Offset54\$($policy.name)") + '\' }
+     if ($folder -ine $wanted) { throw "Wizard default folder for ALLUSERS='$scope' is '$folder', expected '$wanted'." }
+   }
+   $execute = @{}
+diff --git a/packaging/windows/deckcraft.wxs b/packaging/windows/deckcraft.wxs
+index f6efd99..dd20d50 100644
+--- a/packaging/windows/deckcraft.wxs
++++ b/packaging/windows/deckcraft.wxs
+@@ -3,28 +3,28 @@
+   <?ifndef HasCraftFontLicences ?>
+   <?define HasCraftFontLicences=0 ?>
+   <?endif?>
+-  <Package Name="DeckCraft" Manufacturer="Learning Machines LLC" Version="$(var.Version)" UpgradeCode="6F9C69E7-7825-40D2-BF26-C274DA676425" Scope="perUserOrMachine" Compressed="yes" Language="1033">
+-    <SummaryInformation Description="DeckCraft presentations and slide shows" Manufacturer="Learning Machines LLC" />
++  <Package Name="SlideCraft" Manufacturer="Offset54" Version="$(var.Version)" UpgradeCode="8D7E7FDD-7C66-40CE-AB2A-E8AC686EE93A" Scope="perUserOrMachine" Compressed="yes" Language="1033">
++    <SummaryInformation Description="SlideCraft presentations and slide shows" Manufacturer="Offset54" />
+     <?include $(sys.SOURCEFILEDIR)install-policy.wxi?>
+     <!-- Same-version upgrades let successive pre-releases of one X.Y.Z replace each other
+          (MSI versions are numeric, so 1.2.3-rc.1 and 1.2.3-rc.2 are both 1.2.3). -->
+-    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of DeckCraft is already installed." />
++    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of SlideCraft is already installed." />
+     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+ 
+     <Icon Id="DeckcraftIcon.ico" SourceFile="$(var.IconPath)" />
+     <Property Id="ARPPRODUCTICON" Value="DeckcraftIcon.ico" />
+-    <Property Id="ARPURLINFOABOUT" Value="https://getartcraft.com/apps/deckcraft" />
+-    <Property Id="ARPURLUPDATEINFO" Value="https://getartcraft.com/apps/deckcraft" />
+-    <Property Id="ARPHELPLINK" Value="https://discord.gg/artcraft" />
++    <Property Id="ARPURLINFOABOUT" Value="https://github.com/Offset54/deckcraft" />
++    <Property Id="ARPURLUPDATEINFO" Value="https://github.com/Offset54/deckcraft" />
++    <Property Id="ARPHELPLINK" Value="https://github.com/Offset54/deckcraft/issues" />
+ 
+     <StandardDirectory Id="ProgramFiles6432Folder">
+-      <Directory Id="CraftSuiteFolder" Name="ArtCraft">
+-        <Directory Id="INSTALLFOLDER" Name="DeckCraft" />
++      <Directory Id="CraftSuiteFolder" Name="Offset54">
++        <Directory Id="INSTALLFOLDER" Name="SlideCraft" />
+       </Directory>
+     </StandardDirectory>
+     <StandardDirectory Id="ProgramMenuFolder" />
+ 
+-    <Feature Id="Main" Title="DeckCraft" Level="1">
++    <Feature Id="Main" Title="SlideCraft" Level="1">
+       <?if $(var.HasCraftFontLicences) = 1 ?>
+       <ComponentGroupRef Id="CraftFontLicences" />
+       <?endif?>
+@@ -44,7 +44,7 @@
+     </ComponentGroup>
+     <?endif?>
+     <ComponentGroup Id="DeckcraftFiles" Directory="INSTALLFOLDER">
+-      <Component Id="DeckcraftApp" Guid="D87EA444-41A4-4C19-922E-66D1A29461FF">
++      <Component Id="DeckcraftApp" Guid="43CDC251-0CFF-4633-8BDA-9DDB57BEA3A2">
+         <File Id="DeckcraftNotice" Source="$(var.BinDir)\NOTICE" KeyPath="no" />
+         <File Id="DeckcraftExe" Source="$(var.BinDir)\deckcraft.exe" KeyPath="yes">
+           <!-- No Icon here, so the shortcut shows the icon embedded in deckcraft.exe (build.rs). An
+@@ -54,29 +54,33 @@
+                pointing at the deleted file and lost its icon (#1114). The exe's path survives
+                updates; the shortcut is not advertised, so it targets that path and its icon is the
+                exe's own. The Icon above stays for ARPPRODUCTICON (Apps and features). -->
+-          <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="DeckCraft" Description="DeckCraft presentations and slide shows" WorkingDirectory="INSTALLFOLDER" Advertise="no" />
++          <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="SlideCraft" Description="SlideCraft presentations and slide shows" WorkingDirectory="INSTALLFOLDER" Advertise="no" />
+         </File>
+ 
+-        <!-- .deckcraft: DeckCraft's own format. -->
+-        <ProgId Id="DeckCraft.Presentation" Description="DeckCraft Presentation" Icon="DeckcraftExe" IconIndex="0">
++        <!-- .slidecraft (saved) and .deckcraft (still opens): the same package format. -->
++        <ProgId Id="SlideCraft.Presentation" Description="SlideCraft Presentation" Icon="DeckcraftExe" IconIndex="0">
++          <Extension Id="slidecraft" ContentType="application/x-slidecraft">
++            <Verb Id="open" Command="Open" TargetFile="DeckcraftExe" Argument="&quot;%1&quot;" />
++          </Extension>
+           <Extension Id="deckcraft" ContentType="application/x-deckcraft">
+             <Verb Id="open" Command="Open" TargetFile="DeckcraftExe" Argument="&quot;%1&quot;" />
+           </Extension>
+         </ProgId>
+ 
+         <!-- "Open with" for PowerPoint formats, without becoming the default. -->
+-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\deckcraft.exe" Name="FriendlyAppName" Value="DeckCraft" Type="string" />
++        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\deckcraft.exe" Name="FriendlyAppName" Value="SlideCraft" Type="string" />
+         <RegistryValue Root="HKMU" Key="Software\Classes\Applications\deckcraft.exe\shell\open\command" Value="&quot;[#DeckcraftExe]&quot; &quot;%1&quot;" Type="string" />
++        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\deckcraft.exe\SupportedTypes" Name=".slidecraft" Value="" Type="string" />
+         <RegistryValue Root="HKMU" Key="Software\Classes\Applications\deckcraft.exe\SupportedTypes" Name=".deckcraft" Value="" Type="string" />
+         <RegistryValue Root="HKMU" Key="Software\Classes\Applications\deckcraft.exe\SupportedTypes" Name=".pptx" Value="" Type="string" />
+         <RegistryValue Root="HKMU" Key="Software\Classes\Applications\deckcraft.exe\SupportedTypes" Name=".potx" Value="" Type="string" />
+         <RegistryValue Root="HKMU" Key="Software\Classes\Applications\deckcraft.exe\SupportedTypes" Name=".ppsx" Value="" Type="string" />
+-        <RegistryValue Root="HKMU" Key="Software\Classes\.pptx\OpenWithProgids" Name="DeckCraft.Presentation" Value="" Type="string" />
+-        <RegistryValue Root="HKMU" Key="Software\Classes\.potx\OpenWithProgids" Name="DeckCraft.Presentation" Value="" Type="string" />
+-        <RegistryValue Root="HKMU" Key="Software\Classes\.ppsx\OpenWithProgids" Name="DeckCraft.Presentation" Value="" Type="string" />
++        <RegistryValue Root="HKMU" Key="Software\Classes\.pptx\OpenWithProgids" Name="SlideCraft.Presentation" Value="" Type="string" />
++        <RegistryValue Root="HKMU" Key="Software\Classes\.potx\OpenWithProgids" Name="SlideCraft.Presentation" Value="" Type="string" />
++        <RegistryValue Root="HKMU" Key="Software\Classes\.ppsx\OpenWithProgids" Name="SlideCraft.Presentation" Value="" Type="string" />
+ 
+         <RegistryValue Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\deckcraft.exe" Value="[#DeckcraftExe]" Type="string" />
+-      <RegistryValue Root="HKMU" Key="Software\DeckCraft" Name="InstallDir" Value="[INSTALLFOLDER]" Type="string" />
++      <RegistryValue Root="HKMU" Key="Software\SlideCraft" Name="InstallDir" Value="[INSTALLFOLDER]" Type="string" />
+       </Component>
+ 
+       <Component Id="DeckcraftCli">
+diff --git a/packaging/windows/install-policy.json b/packaging/windows/install-policy.json
+index e13f06b..b60ea83 100644
+--- a/packaging/windows/install-policy.json
++++ b/packaging/windows/install-policy.json
+@@ -1,7 +1,7 @@
+ {
+   "id": "deckcraft",
+-  "name": "DeckCraft",
+-  "upgradeCode": "6F9C69E7-7825-40D2-BF26-C274DA676425",
++  "name": "SlideCraft",
++  "upgradeCode": "8D7E7FDD-7C66-40CE-AB2A-E8AC686EE93A",
+   "sources": [
+     "deckcraft.wxs"
+   ],
+@@ -20,7 +20,7 @@
+       "-1",
+       "Software\\Classes\\Applications\\deckcraft.exe",
+       "FriendlyAppName",
+-      "DeckCraft"
++      "SlideCraft"
+     ],
+     [
+       "-1",
+@@ -28,6 +28,12 @@
+       "",
+       "\"[#DeckcraftExe]\" \"%1\""
+     ],
++    [
++      "-1",
++      "Software\\Classes\\Applications\\deckcraft.exe\\SupportedTypes",
++      ".slidecraft",
++      ""
++    ],
+     [
+       "-1",
+       "Software\\Classes\\Applications\\deckcraft.exe\\SupportedTypes",
+@@ -55,19 +61,19 @@
+     [
+       "-1",
+       "Software\\Classes\\.pptx\\OpenWithProgids",
+-      "DeckCraft.Presentation",
++      "SlideCraft.Presentation",
+       ""
+     ],
+     [
+       "-1",
+       "Software\\Classes\\.potx\\OpenWithProgids",
+-      "DeckCraft.Presentation",
++      "SlideCraft.Presentation",
+       ""
+     ],
+     [
+       "-1",
+       "Software\\Classes\\.ppsx\\OpenWithProgids",
+-      "DeckCraft.Presentation",
++      "SlideCraft.Presentation",
+       ""
+     ],
+     [
+diff --git a/packaging/windows/install-policy.wxi b/packaging/windows/install-policy.wxi
+index 355c12d..31d25f8 100644
+--- a/packaging/windows/install-policy.wxi
++++ b/packaging/windows/install-policy.wxi
+@@ -6,9 +6,9 @@
+        (two registered products, and uninstall leaves files behind). Checked with real msiexec runs. -->
+   <Property Id="INSTALLFOLDER" Secure="yes" />
+   <Property Id="CRAFT_SCOPE" Value="user" Secure="yes" />
+-  <Property Id="CRAFT_U_DIR" Secure="yes"><RegistrySearch Id="CRAFT_U_DIRSearch" Root="HKCU" Key="Software\DeckCraft" Name="InstallDir" Type="raw" /></Property>
++  <Property Id="CRAFT_U_DIR" Secure="yes"><RegistrySearch Id="CRAFT_U_DIRSearch" Root="HKCU" Key="Software\SlideCraft" Name="InstallDir" Type="raw" /></Property>
+   <SetProperty Id="CRAFT_USER_DIR" Action="CraftUFromDIR" Value="[CRAFT_U_DIR]" After="AppSearch" Sequence="both" Condition="NOT CRAFT_USER_DIR AND CRAFT_U_DIR" />
+-  <Property Id="CRAFT_U_FOLDER" Secure="yes"><RegistrySearch Id="CRAFT_U_FOLDERSearch" Root="HKCU" Key="Software\DeckCraft" Name="InstallFolder" Type="raw" /></Property>
++  <Property Id="CRAFT_U_FOLDER" Secure="yes"><RegistrySearch Id="CRAFT_U_FOLDERSearch" Root="HKCU" Key="Software\SlideCraft" Name="InstallFolder" Type="raw" /></Property>
+   <SetProperty Id="CRAFT_USER_DIR" Action="CraftUFromFOLDER" Value="[CRAFT_U_FOLDER]" After="CraftUFromDIR" Sequence="both" Condition="NOT CRAFT_USER_DIR AND CRAFT_U_FOLDER" />
+   <Property Id="CRAFT_U_PATH" Secure="yes"><RegistrySearch Id="CRAFT_U_PATHSearch" Root="HKCU" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\deckcraft.exe" Name="Path" Type="raw" /></Property>
+   <SetProperty Id="CRAFT_USER_DIR" Action="CraftUFromPATH" Value="[CRAFT_U_PATH]" After="CraftUFromFOLDER" Sequence="both" Condition="NOT CRAFT_USER_DIR AND CRAFT_U_PATH" />
+@@ -16,9 +16,9 @@
+   <Property Id="CRAFT_U_EXE" Secure="yes"><RegistrySearch Id="CRAFT_ULegacyExe" Root="HKCU" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\deckcraft.exe" Type="file"><FileSearch Id="CRAFT_ULegacyFile" Name="deckcraft.exe" /></RegistrySearch></Property>
+   <SetProperty Id="CRAFT_USER_DIR" Action="CraftUFromLegacyExe" Value="[CRAFT_U_EXEFOLDER]" After="CraftUFromPATH" Sequence="both" Condition="NOT CRAFT_USER_DIR AND CRAFT_U_EXEFOLDER AND CRAFT_U_EXE" />
+   <Property Id="CRAFT_USER_DIR" Secure="yes" />
+-  <Property Id="CRAFT_M_DIR" Secure="yes"><RegistrySearch Id="CRAFT_M_DIRSearch" Root="HKLM" Key="Software\DeckCraft" Name="InstallDir" Type="raw" /></Property>
++  <Property Id="CRAFT_M_DIR" Secure="yes"><RegistrySearch Id="CRAFT_M_DIRSearch" Root="HKLM" Key="Software\SlideCraft" Name="InstallDir" Type="raw" /></Property>
+   <SetProperty Id="CRAFT_MACHINE_DIR" Action="CraftMFromDIR" Value="[CRAFT_M_DIR]" After="CraftUFromLegacyExe" Sequence="both" Condition="NOT CRAFT_MACHINE_DIR AND CRAFT_M_DIR" />
+-  <Property Id="CRAFT_M_FOLDER" Secure="yes"><RegistrySearch Id="CRAFT_M_FOLDERSearch" Root="HKLM" Key="Software\DeckCraft" Name="InstallFolder" Type="raw" /></Property>
++  <Property Id="CRAFT_M_FOLDER" Secure="yes"><RegistrySearch Id="CRAFT_M_FOLDERSearch" Root="HKLM" Key="Software\SlideCraft" Name="InstallFolder" Type="raw" /></Property>
+   <SetProperty Id="CRAFT_MACHINE_DIR" Action="CraftMFromFOLDER" Value="[CRAFT_M_FOLDER]" After="CraftMFromDIR" Sequence="both" Condition="NOT CRAFT_MACHINE_DIR AND CRAFT_M_FOLDER" />
+   <Property Id="CRAFT_M_PATH" Secure="yes"><RegistrySearch Id="CRAFT_M_PATHSearch" Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\deckcraft.exe" Name="Path" Type="raw" /></Property>
+   <SetProperty Id="CRAFT_MACHINE_DIR" Action="CraftMFromPATH" Value="[CRAFT_M_PATH]" After="CraftMFromFOLDER" Sequence="both" Condition="NOT CRAFT_MACHINE_DIR AND CRAFT_M_PATH" />
+@@ -31,12 +31,12 @@
+   <!-- The wizard can change the context after Windows Installer has already resolved Program Files for the first one.
+        Give the new-install folder explicitly so Everyone never lands in the profile and Only for me never lands in Program Files. -->
+   <?if $(sys.BUILDARCH) = x86 ?>
+-  <SetProperty Id="INSTALLFOLDER" Action="CraftDefaultMachineFolder" Value="[%ProgramFiles(x86)]\ArtCraft\DeckCraft\" After="CraftRestoreUserFolder" Sequence="ui" Condition="NOT INSTALLFOLDER AND ALLUSERS = 1 AND VersionNT64" />
+-  <SetProperty Id="INSTALLFOLDER" Action="CraftDefaultMachineFolder32" Value="[%ProgramFiles]\ArtCraft\DeckCraft\" After="CraftDefaultMachineFolder" Sequence="ui" Condition="NOT INSTALLFOLDER AND ALLUSERS = 1 AND NOT VersionNT64" />
+-  <SetProperty Id="INSTALLFOLDER" Action="CraftDefaultUserFolder" Value="[LocalAppDataFolder]Programs\ArtCraft\DeckCraft\" After="CraftDefaultMachineFolder32" Sequence="ui" Condition="NOT INSTALLFOLDER AND ALLUSERS &lt;&gt; 1" />
++  <SetProperty Id="INSTALLFOLDER" Action="CraftDefaultMachineFolder" Value="[%ProgramFiles(x86)]\Offset54\SlideCraft\" After="CraftRestoreUserFolder" Sequence="ui" Condition="NOT INSTALLFOLDER AND ALLUSERS = 1 AND VersionNT64" />
++  <SetProperty Id="INSTALLFOLDER" Action="CraftDefaultMachineFolder32" Value="[%ProgramFiles]\Offset54\SlideCraft\" After="CraftDefaultMachineFolder" Sequence="ui" Condition="NOT INSTALLFOLDER AND ALLUSERS = 1 AND NOT VersionNT64" />
++  <SetProperty Id="INSTALLFOLDER" Action="CraftDefaultUserFolder" Value="[LocalAppDataFolder]Programs\Offset54\SlideCraft\" After="CraftDefaultMachineFolder32" Sequence="ui" Condition="NOT INSTALLFOLDER AND ALLUSERS &lt;&gt; 1" />
+   <?else?>
+-  <SetProperty Id="INSTALLFOLDER" Action="CraftDefaultMachineFolder" Value="[%ProgramW6432]\ArtCraft\DeckCraft\" After="CraftRestoreUserFolder" Sequence="ui" Condition="NOT INSTALLFOLDER AND ALLUSERS = 1" />
+-  <SetProperty Id="INSTALLFOLDER" Action="CraftDefaultUserFolder" Value="[LocalAppDataFolder]Programs\ArtCraft\DeckCraft\" After="CraftDefaultMachineFolder" Sequence="ui" Condition="NOT INSTALLFOLDER AND ALLUSERS &lt;&gt; 1" />
++  <SetProperty Id="INSTALLFOLDER" Action="CraftDefaultMachineFolder" Value="[%ProgramW6432]\Offset54\SlideCraft\" After="CraftRestoreUserFolder" Sequence="ui" Condition="NOT INSTALLFOLDER AND ALLUSERS = 1" />
++  <SetProperty Id="INSTALLFOLDER" Action="CraftDefaultUserFolder" Value="[LocalAppDataFolder]Programs\Offset54\SlideCraft\" After="CraftDefaultMachineFolder" Sequence="ui" Condition="NOT INSTALLFOLDER AND ALLUSERS &lt;&gt; 1" />
+   <?endif?>
+   <SetProperty Id="INSTALLFOLDER" Action="CraftRestoreMachineFolder" Value="[CRAFT_MACHINE_DIR]" Before="CraftRestoreUserFolder" Sequence="both" Condition="NOT INSTALLFOLDER AND ALLUSERS = 1 AND CRAFT_MACHINE_DIR" />
+   <Launch Condition="Installed OR ALLUSERS &lt;&gt; 1 OR NOT CRAFT_USER_DIR" Message="This app is already installed for your account. Choose Only for me to update it, or uninstall that copy before changing who it is installed for." />
+@@ -46,7 +46,7 @@
+     <TextStyle Id="CraftScopeTitle" FaceName="Segoe UI" Size="12" Bold="yes" />
+     <Dialog Id="CraftScopeDlg" Width="370" Height="220" Title="[ProductName] Setup" NoMinimize="yes">
+       <Control Id="Title" Type="Text" X="20" Y="15" Width="330" Height="30" Text="{\CraftScopeTitle}Who should use [ProductName]?" />
+-      <Control Id="Info" Type="Text" X="20" Y="50" Width="330" Height="30" Text="{\CraftScopeText}An update keeps the existing folder. New copies use the ArtCraft folder under Programs." />
++      <Control Id="Info" Type="Text" X="20" Y="50" Width="330" Height="30" Text="{\CraftScopeText}An update keeps the existing folder. New copies use the Offset54 folder under Programs." />
+       <Control Id="Scope" Type="RadioButtonGroup" X="20" Y="88" Width="330" Height="60" Property="CRAFT_SCOPE">
+         <RadioButtonGroup Property="CRAFT_SCOPE">
+           <RadioButton Value="user" X="0" Y="0" Width="330" Height="20" Text="Only for me (no administrator permission needed)" />
+-- 
+2.43.0
+

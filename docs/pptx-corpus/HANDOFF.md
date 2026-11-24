@@ -72,8 +72,11 @@ decides.
    fill-less theme lines, and whether its slide show chains these builds. Both need PowerPoint
    observed on Windows or Mac.
    - **Commit `3d08904` is red when checked out alone.** It adds the deck 01 regression test, and
-     the fix only lands in `f9e73f1`. CI passed at every pushed tip. Squash the two if the
-     history must be green at every commit.
+     the fix only lands in `f9e73f1`. CI passed at every pushed tip. *Decided 2026-11-24 by the
+     owner: keep the history as it is.* The branch was already merged into
+     `claude/new-session-lm99ab` (merge `9b75851`), which the Phase 3 session builds on, so a
+     squash would have meant rewriting pushed, shared history for one red intermediate commit.
+     Bisecting across it: treat `3d08904` as "skip".
 5. **Fill the coverage gaps** listed under `coverage_gaps` in the manifest:
    - No deck has embedded audio.
    - There is only one native chart.
