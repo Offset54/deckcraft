@@ -43,6 +43,10 @@ const QUERIES: &[&str] = &[
     "vector.get",
     // The deck's variables, modes and resolved values (Phase 4).
     "variable.list",
+    // The deck's paint, effect and grid styles and who uses them (Phase 4).
+    "designStyle.list",
+    // The deck's component library: variants, properties, instances (Phase 4).
+    "component.list",
     "font.used",
     "media.info",
     "file.info",

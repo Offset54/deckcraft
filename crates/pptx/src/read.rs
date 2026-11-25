@@ -1499,6 +1499,11 @@ fn read_slide(imp: &mut Imp, part: &Part, doc: &Doc, id: SlideId, layout: Layout
     }
     s.baseline_grid = root.child("extLst").and_then(grid_ext);
     s.modes = root.child("extLst").map(modes_ext).unwrap_or_default();
+    s.grid_style = root
+        .child("extLst")
+        .and_then(|l| l.children_named("ext").find(|e| e.attr("uri") == Some(crate::opc::EXT_SC_MODES)))
+        .and_then(|e| e.child("modes"))
+        .and_then(|m| m.u32("gridStyle"));
     if let Some(ext) = root.child("extLst").filter(|e| !has_rel_refs(e)) {
         let ours = |e: &El| matches!(e.attr("uri"), Some(u) if u == crate::opc::EXT_SC_GRID || u == crate::opc::EXT_SC_MODES);
         s.raw_ext = Some(ext.elements().filter(|e| !ours(e)).map(|e| part.keep(e)).collect());

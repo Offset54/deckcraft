@@ -11,6 +11,7 @@ use crate::theme::{self, Tokens};
 use crate::{SlideApp, widgets};
 
 mod animation;
+mod assets;
 mod background;
 mod comments;
 pub(crate) mod crop_section;
@@ -56,6 +57,7 @@ pub fn show(app: &mut SlideApp, ui: &mut Ui) {
                 "thesaurus" => "Thesaurus",
                 "revisions" => "Revisions",
                 "variables" => "Variables",
+                "assets" => "Assets",
                 _ => "Pane",
             };
             ui.horizontal(|ui| {
@@ -84,6 +86,7 @@ pub fn show(app: &mut SlideApp, ui: &mut Ui) {
                 "thesaurus" => thesaurus(app, ui),
                 "revisions" => revisions(app, ui),
                 "variables" => variables::variables(app, ui),
+                "assets" => assets::assets(app, ui),
                 _ => {}
             });
         });

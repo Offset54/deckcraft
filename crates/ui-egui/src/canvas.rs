@@ -331,6 +331,7 @@ pub fn show(app: &mut SlideApp, ui: &mut Ui) {
     {
         draw_grid(&painter, slide_rect, step);
     }
+    draw_layout_grids(app, &painter, slide_rect, scale);
     app.session.tool.guides_visible = app.ui.guides;
     if app.ui.guides {
         draw_guides(app, &painter, xf, slide_rect, &t);
@@ -405,3 +406,32 @@ mod guides_tests;
 #[cfg(test)]
 #[path = "media_bar_tests.rs"]
 mod media_bar_tests;
+
+/// SlideCraft grid styles (Phase 4.2): the columns and rows of the slide's grid style, and of
+/// frames that use one, drawn as translucent bands while editing (never in output).
+fn draw_layout_grids(app: &SlideApp, painter: &egui::Painter, slide_rect: Rect, scale: f32) {
+    use deckcraft_model::design_styles::{LayoutGrid, StyleKind};
+    let Some(st) = app.session.active().filter(|d| d.selection.target == Target::Slides) else { return };
+    let Some(ds) = st.doc.design_system() else { return };
+    let Some(slide) = st.doc.slides.get(st.selection.slide) else { return };
+    let grid = |id: u32| ds.styles.iter().find(|s| s.id == id).and_then(|s| if let StyleKind::Grid { grid } = &s.kind { Some(*grid) } else { None });
+    let mut boxes: Vec<(LayoutGrid, deckcraft_geom::Xfrm)> = vec![];
+    if let Some(g) = slide.grid_style.and_then(grid) {
+        boxes.push((g, deckcraft_geom::Xfrm::new(0.0, 0.0, st.doc.slide_size.width, st.doc.slide_size.height)));
+    }
+    deckcraft_model::walk(&slide.shapes, &mut |sh, _| {
+        if let (Some(g), Some(x)) = (sh.styles.and_then(|r| r.grid).and_then(grid), sh.xfrm) {
+            boxes.push((g, x));
+        }
+    });
+    let fill = Color32::from_rgba_unmultiplied(255, 80, 80, 28);
+    let to = |x: f64, y: f64| pos2(slide_rect.min.x + x as f32 * scale, slide_rect.min.y + y as f32 * scale);
+    for (g, b) in boxes.into_iter().take(64) {
+        for (x0, x1) in g.columns_in(b.x, b.w) {
+            painter.rect_filled(Rect::from_min_max(to(x0, b.y), to(x1, b.y + b.h)), CornerRadius::ZERO, fill);
+        }
+        for (y0, y1) in g.rows_in(b.y, b.h) {
+            painter.rect_filled(Rect::from_min_max(to(b.x, y0), to(b.x + b.w, y1)), CornerRadius::ZERO, fill);
+        }
+    }
+}

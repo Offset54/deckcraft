@@ -405,6 +405,17 @@ pub struct Shape {
     /// colours bind through `ColorBase::Var` instead.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub bindings: Vec<variables::Binding>,
+    /// The paint, effect and grid styles it uses (SlideCraft, `design_styles`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub styles: Option<design_styles::StyleRefs>,
+    /// This frame is an instance of a component (SlideCraft, `component`); its members are the
+    /// component's content with the instance's properties and overrides.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instance: Option<Box<component::Instance>>,
+    /// This frame is the main of component `id`: editing it updates the library and every
+    /// instance (SlideCraft, `component`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub main_of: Option<u32>,
 }
 
 /// How text in other boxes flows around a shape.
@@ -506,6 +517,9 @@ impl Default for Shape {
             vector: None,
             p3: None,
             bindings: vec![],
+            styles: None,
+            instance: None,
+            main_of: None,
         }
     }
 }
@@ -737,6 +751,9 @@ pub struct Slide {
     /// Variable modes this slide uses instead of the deck's, as (collection, mode) (SlideCraft).
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub modes: Vec<(u32, u32)>,
+    /// The grid style shown over the slide while editing (SlideCraft, `design_styles`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub grid_style: Option<u32>,
 }
 
 impl Default for Slide {
@@ -758,6 +775,7 @@ impl Default for Slide {
             tags: vec![],
             raw_ext: None,
             modes: vec![],
+            grid_style: None,
         }
     }
 }

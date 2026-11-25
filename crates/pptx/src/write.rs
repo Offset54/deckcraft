@@ -383,15 +383,20 @@ fn with_grid(raw: Option<String>, grid: Option<deckcraft_model::BaselineGrid>) -
     Some(raw.unwrap_or_default() + &e.s)
 }
 
-/// `raw` plus the slide's SlideCraft variable modes (`sc:modes`, `[[collection, mode], …]` as
-/// JSON), when it has any. The reader takes them back out of the kept extensions.
-fn with_modes(raw: Option<String>, modes: &[(u32, u32)]) -> Option<String> {
-    if modes.is_empty() {
+/// `raw` plus the slide's SlideCraft variable modes (`sc:modes/@data`, `[[collection, mode], …]`
+/// as JSON) and grid style (`@gridStyle`), when it has either. The reader takes them back out of
+/// the kept extensions.
+fn with_modes(raw: Option<String>, modes: &[(u32, u32)], grid_style: Option<u32>) -> Option<String> {
+    if modes.is_empty() && grid_style.is_none() {
         return raw;
     }
     let mut e = W::frag();
     e.open("p:ext", A::new().a("uri", crate::opc::EXT_SC_MODES));
-    e.empty("sc:modes", A::new().a("xmlns:sc", crate::opc::NS_SC).a("data", serde_json::to_string(modes).unwrap_or_default()));
+    let mut a = A::new().a("xmlns:sc", crate::opc::NS_SC).a("data", serde_json::to_string(modes).unwrap_or_default());
+    if let Some(g) = grid_style {
+        a = a.a("gridStyle", g);
+    }
+    e.empty("sc:modes", a);
     e.close("p:ext");
     Some(raw.unwrap_or_default() + &e.s)
 }
@@ -862,7 +867,7 @@ fn slide_xml(x: &mut Exp, o: &mut Out, s: &Slide, comment_rel: Option<&str>) -> 
     if !s.animations.is_empty() {
         timing::timing(&mut w, x, &s.animations, &s.shapes, &ids);
     }
-    slide_ext_list(&mut w, with_modes(with_grid(s.raw_ext.clone(), s.baseline_grid), &s.modes).as_deref(), comment_rel);
+    slide_ext_list(&mut w, with_modes(with_grid(s.raw_ext.clone(), s.baseline_grid), &s.modes, s.grid_style).as_deref(), comment_rel);
     w.close("p:sld");
     w.finish()
 }

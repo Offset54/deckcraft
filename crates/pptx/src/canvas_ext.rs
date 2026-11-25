@@ -58,6 +58,15 @@ pub struct CanvasExt {
     /// value on the slide (Phase 4).
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub color_vars: Vec<(String, u32)>,
+    /// The paint, effect and grid styles the shape uses (Phase 4; its look is written as is).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub styles: Option<deckcraft_model::design_styles::StyleRefs>,
+    /// A component instance (Phase 4; its members are written as they are drawn).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instance: Option<Box<deckcraft_model::component::Instance>>,
+    /// The main of a component (Phase 4).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub main_of: Option<u32>,
 }
 
 impl CanvasExt {
@@ -79,6 +88,9 @@ impl CanvasExt {
             frame_background: false,
             bindings: s.bindings.clone(),
             color_vars: deckcraft_model::variables::color_bindings(s),
+            styles: s.styles,
+            instance: s.instance.clone(),
+            main_of: s.main_of,
         };
         (e != CanvasExt::default()).then_some(e)
     }
@@ -112,6 +124,9 @@ impl CanvasExt {
             s.geom = v.to_geom();
         }
         s.p3 = self.p3;
+        s.styles = self.styles.filter(|r| !r.is_empty());
+        s.instance = self.instance.clone();
+        s.main_of = self.main_of;
         s.bindings = self.bindings.iter().copied().take(deckcraft_model::variables::MAX_BINDINGS).collect();
         if !self.color_vars.is_empty() {
             let vars = &self.color_vars;

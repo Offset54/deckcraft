@@ -64,6 +64,10 @@ pub struct TextStyle {
     /// Character settings.
     #[serde(skip_serializing_if = "is_default")]
     pub run: RunProps,
+    /// Font size and family driven by variables (SlideCraft Phase 4); the engine writes their
+    /// values into `run`. A colour follows a variable through `run.fill` (`ColorBase::Var`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub bindings: Vec<crate::variables::Binding>,
 }
 
 fn is_default<T: Default + PartialEq>(v: &T) -> bool {
@@ -103,6 +107,7 @@ pub fn sanitize(all: Vec<TextStyle>) -> Vec<TextStyle> {
             continue;
         }
         s.name = s.name.chars().take(MAX_NAME).collect();
+        s.bindings.truncate(crate::variables::MAX_BINDINGS);
         if s.based_on.as_deref().is_some_and(|b| !valid_id(b) || b == s.id) {
             s.based_on = None;
         }
@@ -118,7 +123,7 @@ pub fn sanitize(all: Vec<TextStyle>) -> Vec<TextStyle> {
 }
 
 fn style(id: &str, name: &str, kind: TextStyleKind, para: ParaProps, run: RunProps) -> TextStyle {
-    TextStyle { id: id.into(), name: name.into(), kind, based_on: None, para, run }
+    TextStyle { id: id.into(), name: name.into(), kind, based_on: None, para, run, bindings: vec![] }
 }
 
 fn color(slot: SchemeSlot) -> Option<Fill> {

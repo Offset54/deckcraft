@@ -146,6 +146,7 @@ impl SlideApp {
                 self.ui.pane = Some("thesaurus".into());
             }
             "view.variables" => self.ui.pane = Some("variables".into()),
+            "view.assets" => self.ui.pane = Some("assets".into()),
             "view.pane" => {
                 let pane = p.get("pane").and_then(Value::as_str).map(String::from);
                 self.ui.pane =
