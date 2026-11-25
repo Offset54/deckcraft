@@ -41,7 +41,9 @@ paragraph-, table- and shape-level extensions on the move.
    writer emits itself. An element with only kept extensions is written open rather than empty.
 5. `crates/pptx/src/read/shapes.rs` (`base`) and the matching writer: keep the `p:cNvPr`
    `a:extLst` children other than the decorative extension in the existing `Shape::raw_ext`, and
-   write them back after it.
+   write them back after it, for every element that has one: `p:sp`, `p:pic`, `p:grpSp`,
+   `p:cxnSp`, `p:graphicFrame` and `p:contentPart`. Groups matter as much as shapes: an app can
+   keep its own settings on a group.
 6. Tests: each element keeps an unknown extension across open and save; one with a relationship
    reference is dropped; an oversized one is bounded; documents without extensions write
    byte-identically to today.
