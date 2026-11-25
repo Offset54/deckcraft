@@ -47,6 +47,8 @@ const QUERIES: &[&str] = &[
     "designStyle.list",
     // The deck's component library: variants, properties, instances (Phase 4).
     "component.list",
+    // The layout library's layouts (Phase 4).
+    "slide.library",
     "font.used",
     "media.info",
     "file.info",

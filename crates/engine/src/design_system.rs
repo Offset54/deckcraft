@@ -183,6 +183,7 @@ fn shows(sh: &Shape, comps: &[u32], lib: &[deckcraft_model::component::Component
 /// rebuilt by their parent). With `capture`, edits made inside an instance become overrides
 /// first. Whether anything changed.
 fn sync_list(
+    ctx_doc: &Presentation,
     list: &mut [Shape],
     lib: &[deckcraft_model::component::Component],
     ids: &mut Counter,
@@ -212,6 +213,11 @@ fn sync_list(
             if let Some(built) = deckcraft_model::component::materialize(lib, comp, sh, &inst, ids) {
                 let mut built = built;
                 crate::canvas::settle_list(std::slice::from_mut(&mut built));
+                // Its text reflows: auto-sizing boxes take the height their text needs (the
+                // component's main was sized for the component's own text).
+                if crate::library_fit::fit_tree(ctx_doc, std::slice::from_mut(&mut built)) {
+                    crate::canvas::settle_list(std::slice::from_mut(&mut built));
+                }
                 if built != *sh {
                     *sh = built;
                     changed = true;
@@ -220,7 +226,7 @@ fn sync_list(
             continue;
         }
         if let ShapeKind::Group { children, .. } = &mut sh.kind {
-            changed |= sync_list(children, lib, ids, capture, pick, depth + 1);
+            changed |= sync_list(ctx_doc, children, lib, ids, capture, pick, depth + 1);
         }
     }
     changed
@@ -258,6 +264,8 @@ fn components_settle(old: &Presentation, new: &mut Presentation, _design_changed
         return;
     }
     let mut ids = Counter(new.next_id);
+    // Text in rebuilt instances is measured with the deck's theme as it now is.
+    let ctx_doc = new.clone();
     // 2. Every instance of a changed component, and every instance on an edited slide.
     for (slide, t) in new.slides.iter_mut().zip(&touched) {
         if !has_instances(&slide.shapes) {
@@ -269,7 +277,7 @@ fn components_settle(old: &Presentation, new: &mut Presentation, _design_changed
         // same step (a difference then is the component's change, not an edit).
         let capture = |sh: &Shape| edited && !shows(sh, &changed, &lib);
         let mut shapes = slide.shapes.clone();
-        if sync_list(&mut shapes, &lib, &mut ids, &capture, &pick, 0) {
+        if sync_list(&ctx_doc, &mut shapes, &lib, &mut ids, &capture, &pick, 0) {
             let s = Arc::make_mut(slide);
             s.shapes = shapes;
             crate::canvas::settle_list(&mut s.shapes);
@@ -287,9 +295,9 @@ fn components_settle(old: &Presentation, new: &mut Presentation, _design_changed
         let pick = |sh: &Shape| !untouched || shows(sh, &changed, &lib);
         let capture = |sh: &Shape| !untouched && !shows(sh, &changed, &lib);
         let mut mm = (**m).clone();
-        let mut ch = sync_list(&mut mm.shapes, &lib, &mut ids, &capture, &pick, 0);
+        let mut ch = sync_list(&ctx_doc, &mut mm.shapes, &lib, &mut ids, &capture, &pick, 0);
         for l in &mut mm.layouts {
-            ch |= sync_list(&mut l.shapes, &lib, &mut ids, &capture, &pick, 0);
+            ch |= sync_list(&ctx_doc, &mut l.shapes, &lib, &mut ids, &capture, &pick, 0);
         }
         if ch {
             crate::canvas::settle_list(&mut mm.shapes);

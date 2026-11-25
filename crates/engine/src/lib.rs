@@ -22,6 +22,8 @@ pub mod ink_replay;
 pub mod inkshape;
 pub mod io;
 pub mod keys;
+pub mod library;
+pub(crate) mod library_fit;
 pub mod links;
 pub mod media_refs;
 pub mod picture_export;

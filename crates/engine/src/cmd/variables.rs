@@ -264,7 +264,7 @@ fn create_collection(s: &mut Session, p: &Value) -> Result<Value> {
             ms.push(Mode { id: doc.alloc_id().ok_or_else(|| bad(C, NO_ID_SPACE))?, name: m.clone() });
         }
         let out = json!({"id": id, "modes": ms.iter().map(|m| json!({"id": m.id, "name": m.name})).collect::<Vec<_>>()});
-        design(doc).collections.push(Collection { id, name, modes: ms });
+        design(doc).collections.push(Collection { id, name, modes: ms, kit: false });
         Ok(out)
     })
 }

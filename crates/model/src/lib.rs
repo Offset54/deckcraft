@@ -15,6 +15,7 @@ pub mod canvas;
 pub mod chart;
 pub mod component;
 pub mod defaults;
+pub mod design_kit;
 pub mod design_styles;
 pub mod edit;
 pub mod numfmt;

@@ -299,6 +299,8 @@ pub fn menu_tree() -> Vec<(&'static str, Vec<(&'static str, &'static str)>)> {
                 ("Select Members", "edit.selectChildren"),
                 ("Select Parent", "edit.selectParent"),
                 ("-", ""),
+                ("Tidy Up", "arrange.tidy"),
+                ("-", ""),
                 ("Create Component", "component.create"),
                 ("Go to Main Component", "component.editMain"),
                 ("Detach Instance", "instance.detach"),

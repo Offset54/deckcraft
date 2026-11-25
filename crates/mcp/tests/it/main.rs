@@ -9,3 +9,5 @@ mod phase1_sample;
 mod phase2_sample;
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod phase3_sample;
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod phase4_sample;

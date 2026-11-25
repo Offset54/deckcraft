@@ -127,6 +127,11 @@ pub struct Collection {
     pub name: String,
     /// At least one; the first is the default.
     pub modes: Vec<Mode>,
+    /// SlideCraft's theme kit (`design_kit`): the collection Design ▸ Themes and the layout library
+    /// keep up to date. Marked rather than found by name, so a deck's own collection called
+    /// "Theme" is never overwritten.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub kit: bool,
 }
 
 impl Collection {
@@ -246,6 +251,10 @@ impl DesignSystem {
     }
     pub fn collection(&self, id: u32) -> Option<&Collection> {
         self.collections.iter().find(|c| c.id == id)
+    }
+    /// The theme kit's collection (`design_kit`), when the deck has one.
+    pub fn kit(&self) -> Option<&Collection> {
+        self.collections.iter().find(|c| c.kit)
     }
     pub fn collection_named(&self, name: &str) -> Option<&Collection> {
         self.collections.iter().find(|c| c.name.eq_ignore_ascii_case(name))
@@ -407,6 +416,13 @@ impl DesignSystem {
         self.collections.retain(|c| !c.modes.is_empty());
         let mut seen = std::collections::HashSet::new();
         self.collections.retain(|c| seen.insert(c.id));
+        // One kit at most.
+        let mut seen_kit = false;
+        for c in &mut self.collections {
+            if c.kit && std::mem::replace(&mut seen_kit, true) {
+                c.kit = false;
+            }
+        }
         self.variables.truncate(MAX_VARIABLES);
         let colls: Vec<(u32, Vec<u32>)> = self.collections.iter().map(|c| (c.id, c.modes.iter().map(|m| m.id).collect())).collect();
         let mut seen = std::collections::HashSet::new();

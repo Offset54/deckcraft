@@ -59,6 +59,9 @@ pub(crate) fn variables(app: &mut SlideApp, ui: &mut Ui) {
     let Some(coll) = st.collection.and_then(|c| ds.collection(c)).cloned() else {
         ui.add_space(8.0);
         ui.label(egui::RichText::new("No variables yet. A collection holds variables with a value per mode, such as Light and Dark.").weak());
+        if ui.button("Theme Variables").on_hover_text("Make the theme a Light and Dark collection the layout library uses").clicked() {
+            run(app, "design.kit", json!({}));
+        }
         ui.data_mut(|d| d.insert_temp(id, st));
         return;
     };

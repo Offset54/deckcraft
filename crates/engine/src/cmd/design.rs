@@ -170,6 +170,11 @@ fn theme(s: &mut Session, p: &Value) -> Result<Value> {
         m.theme = t.clone();
         m.name = t.name.clone();
         m.color_map = vec![];
+        // A deck with the theme kit (SlideCraft Phase 4) gets the new theme's Light and Dark
+        // values in it, so both modes follow the theme.
+        if doc.design_system().is_some_and(|d| d.kit().is_some()) {
+            crate::library::refresh_kit(doc, &t).ok_or_else(|| bad("design.theme", super::NO_ID_SPACE))?;
+        }
         Ok(())
     })?;
     Ok(json!({"theme": name}))
@@ -296,7 +301,7 @@ fn remap_media_ids(theme: &deckcraft_model::theme::Theme, map: &std::collections
     serde_json::from_value(v).map_err(|e| bad("design.browseTheme", e.to_string()))
 }
 
-fn master_index(doc: &Presentation, sel: &crate::Selection) -> usize {
+pub(crate) fn master_index(doc: &Presentation, sel: &crate::Selection) -> usize {
     match sel.target {
         Target::Master { master } | Target::Layout { master, .. } => master,
         Target::Slides | Target::Handout | Target::NotesMaster => {

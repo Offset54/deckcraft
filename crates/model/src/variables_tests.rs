@@ -7,6 +7,7 @@ fn ds() -> DesignSystem {
             id: 1,
             name: "Theme".into(),
             modes: vec![Mode { id: 2, name: "Light".into() }, Mode { id: 3, name: "Dark".into() }],
+            kit: false,
         }],
         variables: vec![
             Variable {
@@ -170,7 +171,7 @@ fn hostile_numbers_and_kinds_are_cleaned() {
         theme: Some(ThemeSlot::MajorFont),
         ..Default::default()
     });
-    d.collections.push(Collection { id: 5, name: "empty".into(), modes: vec![] });
+    d.collections.push(Collection { id: 5, name: "empty".into(), modes: vec![], kit: false });
     d.sanitize();
     assert_eq!(d.variable(20).map(|v| v.values.clone()), Some(vec![(2, VarValue::Number(0.0))]));
     assert!(d.variable(21).is_none());

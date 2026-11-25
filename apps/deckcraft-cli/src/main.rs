@@ -307,6 +307,32 @@ fn bench_edits(
     })?;
     steps.push(("restyle every slide", restyle));
     let deck = cost(&s);
+    // SlideCraft Phase 4: switch the first variable collection with two modes back and forth,
+    // and the same switch followed by drawing every slide (what a viewer then sees).
+    let coll = doc.design_system().and_then(|d| d.collections.iter().find_map(|c| Some((c.id, c.modes.first()?.id, c.modes.get(1)?.id))));
+    if let Some((c, a, b)) = coll {
+        let mut flip = false;
+        steps.push((
+            "variable mode switch",
+            time_ms(runs, || {
+                flip = !flip;
+                s.execute("variable.mode", &json!({"collection": c, "mode": if flip { b } else { a }})).map(|_| ()).map_err(e)
+            })?,
+        ));
+        let opts = deckcraft_engine::render::RenderOpts { scale: 1.0, ..Default::default() };
+        steps.push((
+            "mode switch + draw all",
+            time_ms(runs, || {
+                flip = !flip;
+                s.execute("variable.mode", &json!({"collection": c, "mode": if flip { b } else { a }})).map_err(e)?;
+                let d = s.doc().map_err(e)?.doc.clone();
+                for i in 0..d.slides.len() {
+                    deckcraft_engine::render::render_slide(&d, i, &opts);
+                }
+                Ok(())
+            })?,
+        ));
+    }
     Ok((steps, (one, deck)))
 }
 

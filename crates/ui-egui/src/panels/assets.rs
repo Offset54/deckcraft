@@ -160,6 +160,18 @@ pub(crate) fn assets(app: &mut SlideApp, ui: &mut Ui) {
         }
     }
 
+    // The layout library.
+    ui.add_space(6.0);
+    egui::CollapsingHeader::new(egui::RichText::new("Layouts").font(theme::bold(13.0))).default_open(false).show(ui, |ui| {
+        ui.horizontal_wrapped(|ui| {
+            for l in deckcraft_engine::library::layouts().iter().filter(|l| wanted(l.name)) {
+                if ui.button(l.name).on_hover_text("New slide from this layout").clicked() {
+                    run(app, "slide.fromLibrary", json!({"layout": l.id}));
+                }
+            }
+        });
+    });
+
     // Styles.
     ui.add_space(6.0);
     ui.label(egui::RichText::new("Styles").font(theme::bold(13.0)));

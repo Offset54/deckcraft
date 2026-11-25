@@ -1,6 +1,6 @@
 # SlideCraft: handoff
 
-Status on 2026-11-24: Phase 3 done on `claude/phase-3-canvas` (waiting for the owner's Phase 4 go-ahead); upstream merge deferred until 2026-12-14. Start here if you know nothing about this project.
+Status on 2026-11-25: Phase 4 done on `claude/phase-4-design-system` (waiting for the owner's Phase 5 go-ahead); upstream merge deferred until 2026-12-14. Start here if you know nothing about this project.
 
 ## Goal
 
@@ -65,7 +65,8 @@ Open (for the owner; context in [`recon.md`](recon.md) §11 and
 | 1: foundations | Done: golden images, `.pptx` round trip by pixels, command audit, undo bench | [`reports/phase-1.md`](reports/phase-1.md), [`command-audit.md`](command-audit.md), [`porting-log.md`](porting-log.md) |
 | 2: typography | Done: paragraph composer, hyphenation, optical margins, styles, baseline grid, threaded text, text wrap, table column formats | [`reports/phase-2.md`](reports/phase-2.md) |
 | 3: canvas and layout | Done on `claude/phase-3-canvas` (not yet merged into the main work branch): Grid view switch, editing inside groups, measurement, frames, constraints, auto layout, vector networks, editable booleans, blur and noise, Display P3 | [`reports/phase-3.md`](reports/phase-3.md), [`decisions/003-view-mode.md`](decisions/003-view-mode.md) |
-| 4–8 | Not started | The brief, §4 |
+| 4: design system | Done on `claude/phase-4-design-system` (from `claude/phase-3-canvas`, with `claude/new-session-lm99ab` merged; not yet merged into the main work branch): variables with modes and aliases, paint/effect/grid styles, text styles on variables, components with variants, properties and overrides, the theme kit (every built-in theme in Light and Dark), a 34-layout library, Tidy up; a contact-sheet check of 544 slides for overflow, clipping and WCAG AA | [`reports/phase-4.md`](reports/phase-4.md) |
+| 5–8 | Not started | The brief, §4 |
 
 ## `.pptx` corpus
 
@@ -99,6 +100,12 @@ Open (for the owner; context in [`recon.md`](recon.md) §11 and
    - On Linux, install `libasound2-dev` and `mesa-vulkan-drivers`, and add the Rust target
      `wasm32-unknown-unknown` ([`recon.md`](recon.md) §12).
    - Run `CARGO_INCREMENTAL=0 cargo xtask ci`. With incremental builds, `target/` reaches 28 GB.
-3. Phase 3 is done; ask the owner for the Phase 4 go-ahead and for the decisions in
-   [`reports/phase-3.md`](reports/phase-3.md) §5. Check the dates in decision 004 (2026-12-14).
-4. For corpus work, follow [`pptx-corpus/HANDOFF.md`](pptx-corpus/HANDOFF.md).
+3. Phase 4 is done; ask the owner for the Phase 5 go-ahead and for the decisions in
+   [`reports/phase-4.md`](reports/phase-4.md) §5 (and those still open in
+   [`reports/phase-3.md`](reports/phase-3.md) §5). Check the dates in decision 004 (2026-12-14).
+4. Phase 4's design system: `crates/model/src/{variables,design_styles,component,design_kit}.rs`,
+   the engine's design pass `crates/engine/src/design_system.rs`, the library
+   `crates/engine/src/library.rs`, commands in `crates/engine/src/cmd/{variables,design_styles,components,library}.rs`.
+   `SLIDECRAFT_CONTACT_SHEET=<file.png> cargo test -p deckcraft-engine --test it contact_sheet`
+   writes the design-check contact sheet.
+5. For corpus work, follow [`pptx-corpus/HANDOFF.md`](pptx-corpus/HANDOFF.md).
