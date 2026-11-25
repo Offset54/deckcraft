@@ -145,6 +145,7 @@ impl SlideApp {
                 self.thesaurus_query = word;
                 self.ui.pane = Some("thesaurus".into());
             }
+            "view.variables" => self.ui.pane = Some("variables".into()),
             "view.pane" => {
                 let pane = p.get("pane").and_then(Value::as_str).map(String::from);
                 self.ui.pane =

@@ -157,6 +157,7 @@ pub fn open_checked(name: &str, bytes: &[u8]) -> Result<(Presentation, Damage)> 
     };
     // SlideCraft: groups carry their members in slide space, so they can be edited in place.
     crate::canvas::settle_all(&mut p);
+    crate::design_system::settle_all(&mut p);
     Ok((p, damage))
 }
 
@@ -372,6 +373,9 @@ fn flow_threads(doc: &Presentation) -> (Option<Presentation>, std::collections::
 pub fn save_bytes(doc: &Presentation, format: &str) -> Result<Vec<u8>> {
     match format {
         f @ ("pptx" | "potx" | "ppsx") => {
+            // Variable colours carry their value on each slide (PowerPoint has no variables).
+            let resolved = crate::design_system::resolved_for_export(doc);
+            let doc = resolved.as_ref().unwrap_or(doc);
             // Threaded text is written as each box shows it (PowerPoint has no threads).
             let (flowed, thread_joined) = flow_threads(doc);
             let doc = flowed.as_ref().unwrap_or(doc);

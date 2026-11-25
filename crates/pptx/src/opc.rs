@@ -51,6 +51,12 @@ pub const EXT_SC_RUN: &str = "{9E1D3C51-6B7A-4F0E-9D52-2A8C4E7B1F36}";
 /// frames, auto layout, constraints, booleans, vector networks, P3 colours, blur and noise;
 /// `crate::canvas_ext`).
 pub const EXT_SC_CANVAS: &str = "{A275C282-5F6D-4905-AC4E-FC5CB7D810DB}";
+/// `p:presentation/p:extLst/p:ext/@uri` of the deck's design system (`sc:design`, JSON text in
+/// the model's `.deckcraft` form: variables, collections, modes, styles, components).
+/// `p:sld/p:extLst/p:ext/@uri` of the variable modes a slide uses instead of the deck's
+/// (`sc:modes/@data`, JSON `[[collection, mode], …]`).
+pub const EXT_SC_MODES: &str = "{E8B05D2C-71A4-4F3E-B96D-0C27A85F14D9}";
+pub const EXT_SC_DESIGN: &str = "{7D3A61F0-2C84-4B9E-A5D7-93E1F6C0B482}";
 pub const EXT_SC_TEXT_STYLES: &str = "{C4A7F2E8-3B5D-4A19-8E6C-71D0B9F45A23}";
 
 pub const RT_BASE: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/";

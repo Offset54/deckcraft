@@ -22,6 +22,13 @@ pub enum ColorBase {
         name: String,
         last: Rgba,
     },
+    /// A colour variable (SlideCraft, `crate::variables`), resolved when drawn
+    /// (`resolve::Ctx::color`); `last` is its value when last resolved, for readers without the
+    /// deck's variables.
+    Var {
+        id: u32,
+        last: Rgba,
+    },
 }
 
 /// A colour as written in a document: a base (RGB, theme slot…) plus transforms.
@@ -51,7 +58,7 @@ impl ColorRef {
             ColorBase::Scheme { slot: SchemeSlot::PhClr } => ph.unwrap_or_else(|| scheme.get(SchemeSlot::Accent1)),
             ColorBase::Scheme { slot } => scheme.get(*slot),
             ColorBase::Preset { name } => deckcraft_color::preset(name).unwrap_or(Rgba::BLACK),
-            ColorBase::System { last, .. } => *last,
+            ColorBase::System { last, .. } | ColorBase::Var { last, .. } => *last,
         };
         deckcraft_color::apply(base, &self.mods)
     }

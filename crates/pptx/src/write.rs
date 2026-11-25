@@ -383,6 +383,19 @@ fn with_grid(raw: Option<String>, grid: Option<deckcraft_model::BaselineGrid>) -
     Some(raw.unwrap_or_default() + &e.s)
 }
 
+/// `raw` plus the slide's SlideCraft variable modes (`sc:modes`, `[[collection, mode], …]` as
+/// JSON), when it has any. The reader takes them back out of the kept extensions.
+fn with_modes(raw: Option<String>, modes: &[(u32, u32)]) -> Option<String> {
+    if modes.is_empty() {
+        return raw;
+    }
+    let mut e = W::frag();
+    e.open("p:ext", A::new().a("uri", crate::opc::EXT_SC_MODES));
+    e.empty("sc:modes", A::new().a("xmlns:sc", crate::opc::NS_SC).a("data", serde_json::to_string(modes).unwrap_or_default()));
+    e.close("p:ext");
+    Some(raw.unwrap_or_default() + &e.s)
+}
+
 /// The slide's extension list, plus the modern-comments anchor when the slide has a threaded
 /// comment part: the rel reference is how PowerPoint finds it.
 fn slide_ext_list(w: &mut W, raw: Option<&str>, comment_rel: Option<&str>) {
@@ -849,7 +862,7 @@ fn slide_xml(x: &mut Exp, o: &mut Out, s: &Slide, comment_rel: Option<&str>) -> 
     if !s.animations.is_empty() {
         timing::timing(&mut w, x, &s.animations, &s.shapes, &ids);
     }
-    slide_ext_list(&mut w, with_grid(s.raw_ext.clone(), s.baseline_grid).as_deref(), comment_rel);
+    slide_ext_list(&mut w, with_modes(with_grid(s.raw_ext.clone(), s.baseline_grid), &s.modes).as_deref(), comment_rel);
     w.close("p:sld");
     w.finish()
 }
@@ -1191,8 +1204,16 @@ fn presentation_xml(x: &mut Exp, o: &mut Out, masters: &[(u64, String)], notes: 
     let sections = section_slides(p);
     let raw = p.raw_ext.as_deref().filter(|r| !r.trim().is_empty());
     let styles = deckcraft_model::text_style::to_json(&p.text_styles);
-    if !sections.is_empty() || raw.is_some() || styles.is_some() {
+    let design = p.design.as_deref().filter(|d| !d.is_empty()).and_then(|d| serde_json::to_string(d).ok());
+    if !sections.is_empty() || raw.is_some() || styles.is_some() || design.is_some() {
         let mut inner = W::frag();
+        if let Some(json) = &design {
+            inner.open("p:ext", A::new().a("uri", crate::opc::EXT_SC_DESIGN));
+            inner.open("sc:design", A::new().a("xmlns:sc", crate::opc::NS_SC));
+            inner.text(json);
+            inner.close("sc:design");
+            inner.close("p:ext");
+        }
         if let Some(json) = &styles {
             inner.open("p:ext", A::new().a("uri", crate::opc::EXT_SC_TEXT_STYLES));
             inner.open("sc:textStyles", A::new().a("xmlns:sc", crate::opc::NS_SC));

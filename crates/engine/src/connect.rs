@@ -100,10 +100,15 @@ pub fn endpoints(x: &Xfrm) -> (Point, Point) {
 /// Move the ends of connectors glued to shapes on the edited slide to the current site positions.
 /// Connections to shapes that no longer exist are dropped.
 pub fn reroute(doc: &mut Presentation, sel: &Selection) {
-    let Some(list) = crate::shapes_mut(doc, sel) else { return };
-    if !list.iter().any(|s| matches!(s.kind, ShapeKind::Connector { start: Some(_), .. } | ShapeKind::Connector { end: Some(_), .. })) {
+    let glued = |list: &[Shape]| {
+        list.iter().any(|s| matches!(s.kind, ShapeKind::Connector { start: Some(_), .. } | ShapeKind::Connector { end: Some(_), .. }))
+    };
+    // Looked at before taking the list for writing: that copies the slide (copy-on-write), and
+    // most slides have no glued connector.
+    if !crate::cmd::current_shapes(doc, sel).is_some_and(|l| glued(l)) {
         return;
     }
+    let Some(list) = crate::shapes_mut(doc, sel) else { return };
     let snapshot: Vec<Shape> = list.clone();
     let view = doc.clone();
     let site = |id: ShapeId, idx: u32| -> Option<Point> {

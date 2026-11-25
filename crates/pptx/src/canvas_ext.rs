@@ -51,6 +51,13 @@ pub struct CanvasExt {
     /// The rectangle written for a frame's own box: dropped on reading.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub frame_background: bool,
+    /// Number, string and boolean bindings (Phase 4; the bound fields are written resolved).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub bindings: Vec<deckcraft_model::variables::Binding>,
+    /// Colours that name a variable, by path (`fill`, `line`, `text/<p>/<r>`), written as their
+    /// value on the slide (Phase 4).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub color_vars: Vec<(String, u32)>,
 }
 
 impl CanvasExt {
@@ -70,6 +77,8 @@ impl CanvasExt {
             noise: fx.and_then(|f| f.noise),
             operands: operands.map(<[Shape]>::to_vec).unwrap_or_default(),
             frame_background: false,
+            bindings: s.bindings.clone(),
+            color_vars: deckcraft_model::variables::color_bindings(s),
         };
         (e != CanvasExt::default()).then_some(e)
     }
@@ -103,6 +112,17 @@ impl CanvasExt {
             s.geom = v.to_geom();
         }
         s.p3 = self.p3;
+        s.bindings = self.bindings.iter().copied().take(deckcraft_model::variables::MAX_BINDINGS).collect();
+        if !self.color_vars.is_empty() {
+            let vars = &self.color_vars;
+            deckcraft_model::variables::visit_bound_colors(s, &mut |path, c| {
+                if let Some((_, id)) = vars.iter().find(|(p, _)| p == path)
+                    && let deckcraft_model::ColorBase::Rgb { rgb } = c.base
+                {
+                    c.base = deckcraft_model::ColorBase::Var { id: *id, last: rgb };
+                }
+            });
+        }
         let clean = |v: Option<f64>, max: f64| v.filter(|r| r.is_finite() && *r > 0.0).map(|r| r.min(max));
         let (lb, bb, n) = (
             clean(self.layer_blur, deckcraft_model::style::MAX_BLUR),

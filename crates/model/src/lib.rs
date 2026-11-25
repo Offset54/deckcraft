@@ -13,7 +13,9 @@ pub mod bidi;
 pub mod brand;
 pub mod canvas;
 pub mod chart;
+pub mod component;
 pub mod defaults;
+pub mod design_styles;
 pub mod edit;
 pub mod numfmt;
 pub mod recent;
@@ -24,6 +26,7 @@ pub mod text;
 pub mod text_style;
 pub mod theme;
 mod trendline;
+pub mod variables;
 pub mod vector;
 pub mod words;
 
@@ -398,6 +401,10 @@ pub struct Shape {
     /// Display P3 originals of its fill and outline colours (SlideCraft, `canvas::P3Colors`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub p3: Option<canvas::P3Colors>,
+    /// Properties driven by number, string and boolean variables (SlideCraft, `variables`);
+    /// colours bind through `ColorBase::Var` instead.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub bindings: Vec<variables::Binding>,
 }
 
 /// How text in other boxes flows around a shape.
@@ -498,6 +505,7 @@ impl Default for Shape {
             boolean: None,
             vector: None,
             p3: None,
+            bindings: vec![],
         }
     }
 }
@@ -726,6 +734,9 @@ pub struct Slide {
     /// Unmodelled XML kept for round-trip (custom data).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub raw_ext: Option<String>,
+    /// Variable modes this slide uses instead of the deck's, as (collection, mode) (SlideCraft).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub modes: Vec<(u32, u32)>,
 }
 
 impl Default for Slide {
@@ -746,6 +757,7 @@ impl Default for Slide {
             color_map: None,
             tags: vec![],
             raw_ext: None,
+            modes: vec![],
         }
     }
 }
@@ -900,21 +912,26 @@ impl Master {
     /// The theme's colour scheme with `map` (a layout's or slide's override, or the master's own)
     /// applied.
     pub fn scheme_with(&self, map: &[(String, String)]) -> ColorScheme {
-        let mut s = self.theme.colors.clone();
-        if map.is_empty() {
-            return s;
-        }
-        let base = self.theme.colors.clone();
-        for (alias, slot) in [
-            (SchemeSlot::Bg1, SchemeSlot::Lt1),
-            (SchemeSlot::Tx1, SchemeSlot::Dk1),
-            (SchemeSlot::Bg2, SchemeSlot::Lt2),
-            (SchemeSlot::Tx2, SchemeSlot::Dk2),
-        ] {
-            s.set(slot, base.get(map_slot(map, alias)));
-        }
-        s
+        scheme_mapped(&self.theme.colors, map)
     }
+}
+
+/// `colors` with the colour map `map` applied (`bg1`… resolve to mapped colours).
+pub fn scheme_mapped(colors: &ColorScheme, map: &[(String, String)]) -> ColorScheme {
+    let mut s = colors.clone();
+    if map.is_empty() {
+        return s;
+    }
+    let base = colors.clone();
+    for (alias, slot) in [
+        (SchemeSlot::Bg1, SchemeSlot::Lt1),
+        (SchemeSlot::Tx1, SchemeSlot::Dk1),
+        (SchemeSlot::Bg2, SchemeSlot::Lt2),
+        (SchemeSlot::Tx2, SchemeSlot::Dk2),
+    ] {
+        s.set(slot, base.get(map_slot(map, alias)));
+    }
+    s
 }
 
 /// Resolve `bg1`/`tx1`/`bg2`/`tx2` through the colour map `map` (the default mapping when it has
@@ -1118,6 +1135,10 @@ pub struct Presentation {
     /// [`recent::MAX_RECENT_COLORS`] (`p:clrMru` in presProps).
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub recent_colors: Vec<Rgba>,
+    /// The deck's design system (SlideCraft Phase 4): variables with modes, styles, components.
+    /// Shared between undo steps; absent until used.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub design: Option<Arc<variables::DesignSystem>>,
 }
 
 /// A drawing guide: a vertical line at `pos` points from the slide's left edge, or a horizontal
@@ -1162,11 +1183,18 @@ impl Presentation {
         for md in &self.media {
             m = m.max(md.id.0);
         }
+        if let Some(d) = &self.design {
+            m = m.max(d.max_id());
+        }
         for extra in [self.notes_master.as_deref(), self.handout_master.as_deref()].into_iter().flatten() {
             m = m.max(extra.id.0);
             walk(&extra.shapes, &mut |sh, _| m = m.max(sh.id.0));
         }
         self.next_id = m;
+    }
+    /// The deck's design system, when it has one.
+    pub fn design_system(&self) -> Option<&variables::DesignSystem> {
+        self.design.as_deref()
     }
     pub fn slide_index(&self, id: SlideId) -> Option<usize> {
         self.slides.iter().position(|s| s.id == id)

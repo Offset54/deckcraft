@@ -34,6 +34,7 @@ pub mod text_style;
 pub mod text_thread;
 pub mod three_d;
 pub mod transition;
+pub mod variables;
 pub mod vector;
 pub mod zoom;
 
@@ -191,6 +192,7 @@ pub fn command_specs() -> &'static [CommandSpec] {
         v.extend(text_style::specs());
         v.extend(text_thread::specs());
         v.extend(design::specs());
+        v.extend(variables::specs());
         v.extend(ideas::specs());
         v.extend(transition::specs());
         v.extend(animation::specs());
@@ -387,7 +389,8 @@ pub(crate) fn ok() -> Result<Value> {
     Ok(Value::Null)
 }
 
-/// Parse a colour param: `"#RRGGBB"`, `"accent1"`…, or `{"scheme":"accent2","lumMod":75000}`.
+/// Parse a colour param: `"#RRGGBB"`, `"accent1"`…, `{"scheme":"accent2","lumMod":75000}`, or a
+/// colour variable `{"variable": id}`.
 /// A preset or system colour keeps its base: `{"preset":"red"}`,
 /// `{"system":"windowText","last":"#000000"}`.
 pub(crate) fn color_param(p: &Value, key: &str) -> Option<deckcraft_model::ColorRef> {
@@ -415,6 +418,10 @@ pub(crate) fn color_value(v: &Value) -> Option<deckcraft_model::ColorRef> {
                     return None;
                 }
                 ColorRef { base: deckcraft_model::ColorBase::Preset { name: name.to_string() }, mods: vec![] }
+            } else if let Some(id) = o.get("variable").and_then(Value::as_u64).and_then(|v| u32::try_from(v).ok()) {
+                // A colour variable (SlideCraft): resolved when drawn; `last` is refreshed before
+                // export.
+                deckcraft_model::variables::var_color(id, deckcraft_color::Rgba::BLACK)
             } else if let Some(name) = o.get("system").and_then(Value::as_str) {
                 if !deckcraft_color::is_system_name(name) {
                     return None;

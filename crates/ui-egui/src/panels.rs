@@ -21,6 +21,7 @@ mod frame_section;
 mod reading_order;
 mod smartart;
 mod thesaurus;
+mod variables;
 
 use animation::animation;
 use background::background;
@@ -54,6 +55,7 @@ pub fn show(app: &mut SlideApp, ui: &mut Ui) {
                 "smartart" => "Text Pane",
                 "thesaurus" => "Thesaurus",
                 "revisions" => "Revisions",
+                "variables" => "Variables",
                 _ => "Pane",
             };
             ui.horizontal(|ui| {
@@ -81,6 +83,7 @@ pub fn show(app: &mut SlideApp, ui: &mut Ui) {
                 "smartart" => smartart(app, ui),
                 "thesaurus" => thesaurus(app, ui),
                 "revisions" => revisions(app, ui),
+                "variables" => variables::variables(app, ui),
                 _ => {}
             });
         });

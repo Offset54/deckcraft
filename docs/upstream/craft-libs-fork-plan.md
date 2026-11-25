@@ -75,8 +75,16 @@ Estimated size: about 150 lines plus tests. Run craft-libs' own CI for the touch
      are app policy and become pre-export passes here: a frame's background rectangle (a first
      member, dropped on import) and an editable boolean written as one `p:sp` with its result
      outline (rebuilt as a group on import);
-   - slide, layout and master `raw_ext`: `sc:baselineGrid`;
-   - presentation `raw_ext`: `sc:textStyles`.
+     Phase 4 adds two keys to the same `sc:canvas` JSON (`bindings`, `colorVars`: number,
+     string and boolean bindings, and which colours name a variable), so it needs no new slot;
+   - slide, layout and master `raw_ext`: `sc:baselineGrid`; slide `raw_ext` also `sc:modes`
+     (Phase 4: the variable modes a slide uses instead of the deck's, JSON in `@data`);
+   - presentation `raw_ext`: `sc:textStyles`; `sc:design` (Phase 4: the design system's
+     variables, collections, modes, styles and components, as JSON text). Colour variables
+     reach PowerPoint as plain `a:srgbClr` (their value on that slide, refreshed by the engine
+     before export); variables mapped to a theme slot reach it through the theme's
+     `a:clrScheme`/`a:fontScheme`, which craft-pptx already writes. No colour-level slot is
+     needed.
 
    Keep the pre-export passes (`text_style::flatten_deck`, `Table::with_column_formats`, the
    engine's thread flow) and the post-import pass (`text_style::unflatten_deck`, thread merge) in

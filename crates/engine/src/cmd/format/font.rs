@@ -447,6 +447,10 @@ fn color_command_value(c: &deckcraft_model::ColorRef) -> Value {
         }
         ColorBase::Preset { name } => json!(name),
         ColorBase::System { last, .. } => json!(format!("#{}", last.hex())),
+        ColorBase::Var { id, .. } => {
+            o.insert("variable".into(), json!(id));
+            Value::Object(o)
+        }
     }
 }
 

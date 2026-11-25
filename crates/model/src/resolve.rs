@@ -30,6 +30,15 @@ pub struct Ctx<'a> {
     /// Shapes on the slide that text wraps around: (shape, bounding box in slide points grown
     /// by its wrap margin). Unrotated shapes only.
     pub wrap: Vec<(crate::ShapeId, deckcraft_geom::Rect)>,
+    /// Variable modes the slide uses instead of the deck's (SlideCraft, `Slide::modes`).
+    pub modes: Vec<(u32, u32)>,
+    /// The theme colours under those modes, when they differ from the master's theme.
+    pub theme_colors: Option<ColorScheme>,
+}
+
+/// The theme colours a slide's mode overrides give (see `Ctx::theme_colors`).
+fn mode_colors(pres: &Presentation, master: &Master, modes: &[(u32, u32)]) -> Option<ColorScheme> {
+    pres.design_system()?.scheme_with(&master.theme.colors, modes)
 }
 
 /// Most shapes text wraps around on one slide (hostile files).
@@ -59,7 +68,23 @@ impl<'a> Ctx<'a> {
         let (master, layout) = pres.master_for(slide)?;
         let map = slide.color_map.as_ref().or(layout.and_then(|l| l.color_map.as_ref())).unwrap_or(&master.color_map).clone();
         let grid = grid_of(Some(slide), layout, master);
-        Some(Ctx { pres, master, layout, owner: Owner::Slide, scheme: master.scheme_with(&map), color_map: map, grid, wrap: wrap_of(slide) })
+        let theme_colors = mode_colors(pres, master, &slide.modes);
+        let scheme = match &theme_colors {
+            Some(c) => crate::scheme_mapped(c, &map),
+            None => master.scheme_with(&map),
+        };
+        Some(Ctx {
+            pres,
+            master,
+            layout,
+            owner: Owner::Slide,
+            scheme,
+            color_map: map,
+            grid,
+            wrap: wrap_of(slide),
+            modes: slide.modes.clone(),
+            theme_colors,
+        })
     }
     pub fn for_layout(pres: &'a Presentation, master: &'a Master, layout: &'a Layout) -> Ctx<'a> {
         let map = layout.color_map.as_ref().unwrap_or(&master.color_map).clone();
@@ -72,6 +97,8 @@ impl<'a> Ctx<'a> {
             color_map: map,
             grid: grid_of(None, Some(layout), master),
             wrap: vec![],
+            modes: vec![],
+            theme_colors: None,
         }
     }
     pub fn for_master(pres: &'a Presentation, master: &'a Master) -> Ctx<'a> {
@@ -84,6 +111,8 @@ impl<'a> Ctx<'a> {
             color_map: master.color_map.clone(),
             grid: grid_of(None, None, master),
             wrap: vec![],
+            modes: vec![],
+            theme_colors: None,
         }
     }
     pub fn color(&self, c: &ColorRef, ph: Option<Rgba>) -> Rgba {
@@ -91,9 +120,13 @@ impl<'a> Ctx<'a> {
             crate::ColorBase::Scheme { slot } if matches!(slot, SchemeSlot::Bg1 | SchemeSlot::Tx1 | SchemeSlot::Bg2 | SchemeSlot::Tx2) => {
                 ColorRef { base: crate::ColorBase::Scheme { slot: crate::map_slot(&self.color_map, *slot) }, mods: c.mods.clone() }
             }
+            crate::ColorBase::Var { id, last } => {
+                let base = self.pres.design_system().and_then(|d| d.color(*id, &self.modes)).unwrap_or(*last);
+                return deckcraft_color::apply(base, &c.mods);
+            }
             _ => c.clone(),
         };
-        c.resolve(&self.master.theme.colors, ph)
+        c.resolve(self.theme_colors.as_ref().unwrap_or(&self.master.theme.colors), ph)
     }
 }
 

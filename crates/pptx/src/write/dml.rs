@@ -37,6 +37,9 @@ pub fn ang(deg: f64) -> i64 {
 pub fn color(w: &mut W, c: &ColorRef) {
     let (tag, a) = match &c.base {
         ColorBase::Rgb { rgb } => ("a:srgbClr", A::new().a("val", rgb.hex())),
+        // A SlideCraft colour variable: PowerPoint gets its value on this slide (refreshed before
+        // export); the binding rides in the shape's `sc:canvas` extension.
+        ColorBase::Var { last, .. } => ("a:srgbClr", A::new().a("val", last.hex())),
         ColorBase::Scheme { slot } => ("a:schemeClr", A::new().a("val", slot.xml_name())),
         // The reader keeps any name a file has; only names the schema allows are written.
         ColorBase::Preset { name } => ("a:prstClr", A::new().a("val", if deckcraft_color::is_preset_name(name) { name } else { "black" })),

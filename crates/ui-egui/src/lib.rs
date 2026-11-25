@@ -120,7 +120,8 @@ pub const UI_COMMANDS: &[(&str, &str, Option<&str>, &str)] = &[
     ("view.zoom", "Set Zoom", None, "{percent}"),
     ("view.zoomDialog", "Zoom…", None, "{}"),
     ("view.fit", "Fit to Window", None, "{}"),
-    ("view.pane", "Task Pane", None, "{pane: format|animation|selection|comments|designer|background|smartart|null}"),
+    ("view.pane", "Task Pane", None, "{pane: format|animation|selection|comments|designer|background|smartart|variables|null}"),
+    ("view.variables", "Variables", None, "{} (SlideCraft: open the Variables pane: collections, modes and values)"),
     ("review.thesaurusPane", "Thesaurus", Some("Shift+F7"), "{word?}: open the Thesaurus pane on the selected word"),
     ("view.tab", "Ribbon Tab", None, "{tab}"),
     ("view.collapseRibbon", "Collapse the Ribbon", Some("Cmd+F1"), "{}"),
@@ -501,6 +502,8 @@ mod texture_limit_tests;
 mod ui_soak_tests;
 #[cfg(test)]
 mod units_tests;
+#[cfg(test)]
+mod variables_pane_tests;
 
 #[cfg(test)]
 #[path = "datetime_tests.rs"]

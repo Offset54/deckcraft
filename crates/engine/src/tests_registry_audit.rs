@@ -41,6 +41,8 @@ const QUERIES: &[&str] = &[
     "arrange.measure",
     // A vector network's points, segments and regions (Phase 3).
     "vector.get",
+    // The deck's variables, modes and resolved values (Phase 4).
+    "variable.list",
     "font.used",
     "media.info",
     "file.info",

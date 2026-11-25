@@ -937,7 +937,19 @@ fn read_sections(p: &mut Presentation, pres_part: &Part, pres_el: &El, file_slid
     {
         p.text_styles = deckcraft_model::text_style::from_json(&json);
     }
-    let ours = |e: &El| matches!(e.attr("uri"), Some(u) if u == crate::SECTION_EXT_URI || u == crate::opc::EXT_SC_TEXT_STYLES);
+    // SlideCraft's design system (written by `write::presentation_xml`), as JSON; the engine
+    // cleans it on open (`DesignSystem::sanitize`).
+    if let Some(json) = ext
+        .children_named("ext")
+        .find(|e| e.attr("uri") == Some(crate::opc::EXT_SC_DESIGN))
+        .and_then(|e| e.child("design"))
+        .map(|t| t.text())
+        .filter(|j| j.len() <= crate::canvas_ext::MAX_LEN)
+        && let Ok(d) = serde_json::from_str::<deckcraft_model::variables::DesignSystem>(&json)
+    {
+        p.design = Some(std::sync::Arc::new(d));
+    }
+    let ours = |e: &El| matches!(e.attr("uri"), Some(u) if u == crate::SECTION_EXT_URI || u == crate::opc::EXT_SC_TEXT_STYLES || u == crate::opc::EXT_SC_DESIGN);
     let kept: String = ext.children_named("ext").filter(|e| !ours(e) && !has_rel_refs(e)).map(|e| pres_part.keep(e)).collect();
     if !kept.is_empty() {
         p.raw_ext = Some(kept);
@@ -1486,10 +1498,25 @@ fn read_slide(imp: &mut Imp, part: &Part, doc: &Doc, id: SlideId, layout: Layout
         timing::media_settings(t, &ctx, &mut s.shapes);
     }
     s.baseline_grid = root.child("extLst").and_then(grid_ext);
+    s.modes = root.child("extLst").map(modes_ext).unwrap_or_default();
     if let Some(ext) = root.child("extLst").filter(|e| !has_rel_refs(e)) {
-        s.raw_ext = Some(ext.elements().filter(|e| e.attr("uri") != Some(crate::opc::EXT_SC_GRID)).map(|e| part.keep(e)).collect());
+        let ours = |e: &El| matches!(e.attr("uri"), Some(u) if u == crate::opc::EXT_SC_GRID || u == crate::opc::EXT_SC_MODES);
+        s.raw_ext = Some(ext.elements().filter(|e| !ours(e)).map(|e| part.keep(e)).collect());
     }
     s
+}
+
+/// SlideCraft's variable modes in a slide's `p:extLst` (at most 256 pairs).
+fn modes_ext(ext_lst: &El) -> Vec<(u32, u32)> {
+    let data = ext_lst
+        .children_named("ext")
+        .find(|e| e.attr("uri") == Some(crate::opc::EXT_SC_MODES))
+        .and_then(|e| e.child("modes"))
+        .and_then(|m| m.attr("data").map(str::to_string))
+        .filter(|d| d.len() <= 64 * 1024);
+    let mut v: Vec<(u32, u32)> = data.and_then(|d| serde_json::from_str(&d).ok()).unwrap_or_default();
+    v.truncate(256);
+    v
 }
 
 fn read_notes(imp: &mut Imp, part: &Part, root: &El) -> TextBody {

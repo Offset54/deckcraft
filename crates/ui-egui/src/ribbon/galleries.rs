@@ -45,6 +45,16 @@ pub fn cref_param(c: &deckcraft_model::ColorRef) -> Value {
             }
             Value::Object(o)
         }
+        deckcraft_model::ColorBase::Var { id, .. } => {
+            let mut o = serde_json::Map::new();
+            o.insert("variable".into(), json!(id));
+            for m in &c.mods {
+                if let Some(v) = m.value() {
+                    o.insert(m.xml_name().into(), json!(v));
+                }
+            }
+            Value::Object(o)
+        }
     }
 }
 
